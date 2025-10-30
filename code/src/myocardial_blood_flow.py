@@ -129,14 +129,18 @@ class MyocardialBloodFlow:
         
         # To prevent unrealistic parameters, we add bounds to the parameters.
         # All the parameters are based on the paper simulations from Jerosch-Herold 1998, pages 5-6:
-        bounds = ([0.5,   # F_min: Minimum flow from paper simulations (page 5: "flows from 0.5 to 4.0 ml/min/g")
-                0.1,   # tau_0_min: Smallest reasonable width
-                0.1,   # k_min: Smallest reasonable decay rate
+        bounds = (
+                [
+                   0.5,   # F_min: Minimum flow from paper simulations (page 5: "flows from 0.5 to 4.0 ml/min/g")
+                   0.1,   # tau_0_min: Smallest reasonable width
+                   0.1,   # k_min: Smallest reasonable decay rate
                 ],
-                [4.0,   # F_max: Maximum flow from paper simulations (page 5)
-                10.0,  # tau_0_max: Largest reasonable width  
-                2.0    # k_max: Largest reasonable decay rate (paper used up to 5.0 in simulations but 2.0 is more physiological)
-                ])
+                [
+                   4.0,   # F_max: Maximum flow from paper simulations (page 5)
+                   10.0,  # tau_0_max: Largest reasonable width  
+                   2.0    # k_max: Largest reasonable decay rate (paper used up to 5.0 in simulations but 2.0 is more physiological)
+                ]
+                )
         
         try:
             # Fit the convolution_model to the measured MYO_pixel data
