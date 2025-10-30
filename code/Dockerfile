@@ -21,4 +21,4 @@ RUN pip install --upgrade pip && \
 COPY . .
 
 # Default command
-CMD ["python", "visualize_dicom.py"]
+CMD ["python", "src/regenerate_results.py"]

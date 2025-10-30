@@ -8,17 +8,12 @@ services:
     container_name: circle-assessment-mbf
     working_dir: /app
     volumes:
-      # Mount source code for live development
-      - .:/app
-      # Mount input data directory
-      - ./input_data:/app/input_data
+      - .:/app   # Mount source code for live development
+      - ./input_data:/app/input_data   # Mount input data directory
+      - ./results:/app/results   # Mount results directory to persist output files
+      - ./logs:/app/logs   # Mount logs directory to persist log files
     environment:
       - PYTHONPATH=/app
       - MPLBACKEND=Agg  # Ensure matplotlib uses non-GUI backend
     restart: unless-stopped
-    # Keep container running for interactive development
-    tty: true
-    stdin_open: true
-    # Default command for development (can be overridden)
-    command: tail -f /dev/null
-c
+    
