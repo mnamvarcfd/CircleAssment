@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  dicom-viewer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dicom-viewer
+    volumes:
+      # Mount the current directory for live code editing
+      - .:/app
+      # Mount DICOM data directory
+      - ./DICOM_files:/app/DICOM_files
+    environment:
+      - PYTHONPATH=/app
+    # Keep container running
+    tty: true
+    stdin_open: true
