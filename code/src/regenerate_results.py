@@ -44,7 +44,7 @@ aif =compute_quantity.arterial_input_function()
 
 #plot AIF
 save_data_manager.plot_pixel_over_time(aif,
-                                       title=f"arterial_input_function",
+                                       title=f"Arterial Input Function (AIF)",
                                        y_label="Signal Intensity",
                                        output_filename="arterial_input_function.png")
 
@@ -53,7 +53,7 @@ myo_pixel_coordinates, myo_time_series = compute_quantity.myocardium_time_series
 
 #plot myocardium time series at 10th pixel
 save_data_manager.plot_pixel_over_time(myo_time_series[10],
-                                       title=f"myocardium_time_series_10",
+                                       title=f"MYOcardium time series (MYO) at 10th pixel",
                                        y_label="Signal Intensity",
                                        output_filename="myocardium_time_series_10.png")
 
