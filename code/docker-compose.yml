@@ -1,18 +1,24 @@
 version: '3.8'
 
 services:
-  dicom-viewer:
+  myocardial-blood-flow:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: dicom-viewer
+    container_name: circle-assessment-mbf
+    working_dir: /app
     volumes:
-      # Mount the current directory for live code editing
+      # Mount source code for live development
       - .:/app
-      # Mount DICOM data directory
-      - ./DICOM_files:/app/DICOM_files
+      # Mount input data directory
+      - ./input_data:/app/input_data
     environment:
       - PYTHONPATH=/app
-    # Keep container running
+      - MPLBACKEND=Agg  # Ensure matplotlib uses non-GUI backend
+    restart: unless-stopped
+    # Keep container running for interactive development
     tty: true
     stdin_open: true
+    # Default command for development (can be overridden)
+    command: tail -f /dev/null
+c

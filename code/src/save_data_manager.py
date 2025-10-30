@@ -3,6 +3,8 @@ from typing import List, Tuple, Optional
 
 import cv2
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Use non-GUI backend for headless operation
 import matplotlib.pyplot as plt
 
 from logging_config import setup_logger
