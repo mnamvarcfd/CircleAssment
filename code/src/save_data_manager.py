@@ -24,7 +24,12 @@ class SaveDataManager:
 
     def __init__(self, results_dir: str = "results") -> None:
         self.results_dir = results_dir
-        os.makedirs(self.results_dir, exist_ok=True)
+        # Check if results directory exists, create it if it doesn't
+        if not os.path.exists(self.results_dir):
+            os.makedirs(self.results_dir, exist_ok=True)
+            logger.info(f"Created results directory: {self.results_dir}")
+        else:
+            logger.debug(f"Results directory already exists: {self.results_dir}")
 
 
     def save_image(self, 
@@ -234,7 +239,6 @@ class SaveDataManager:
         if mask.ndim != 2:
             logger.error("plot_mask: mask must be a 2D array (h, w)")
             return None
-        mask_to_plot = mask
 
         os.makedirs(self.results_dir, exist_ok=True)
         output_file = os.path.join(self.results_dir, output_filename)
@@ -242,8 +246,9 @@ class SaveDataManager:
         # Create the plot
         plt.figure(figsize=(10, 8))
         
+        mask_to_plot = (1 - mask) * 255
         # Plot the mask
-        im = plt.imshow(mask, cmap='gray', interpolation='nearest')
+        im = plt.imshow(mask, cmap='gray_r', interpolation='nearest')
         
         plt.tight_layout()
         
@@ -251,11 +256,13 @@ class SaveDataManager:
         plt.savefig(output_file, dpi=300, bbox_inches='tight')
         logger.info(f"Mask plot saved to: {output_file}")
         plt.close()
+        return output_file
 
 
 if __name__ == "__main__":
     from data_loader import DataLoader
-    frames = DataLoader(dicom_dir="input_data/DICOM_files").dicom()
+    data_loader = DataLoader()
+    frames = data_loader.dicom()
     
     manager = SaveDataManager()
     manager.create_movie_from_frames(frames)
@@ -271,16 +278,12 @@ if __name__ == "__main__":
                                  output_filename="center_pixel_timeseries.png")
     
     
-    
     mask = DataLoader(mask_file="input_data/AIF_And_Myo_Masks.tiff").mask(mask_index=0)
     manager.plot_mask(mask, output_filename="blood_pool.png")
     
     mask = DataLoader(mask_file="input_data/AIF_And_Myo_Masks.tiff").mask(mask_index=1)
     manager.plot_mask(mask, output_filename="myocardium.png")
 
-    # Example: Save MBF values as image map (demonstrated in myocardial_blood_flow.py)
-    # manager.save_image(mbf_values, mask_file="input_data/AIF_And_Myo_Masks.tiff",
-    #                   mask_index=1, output_filename="mbf_map.png")
 
 
 

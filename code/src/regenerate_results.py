@@ -13,22 +13,12 @@ blood_pool_mask = data_loader.mask(mask_index=0)
 
 myocardium_mask = data_loader.mask(mask_index=1)
 
+
 #=============================================Save Data===========================================
 save_data_manager = SaveDataManager()
 
 # Create movie from frames
 save_data_manager.create_movie_from_frames(frames)
-
-# plot intensity over time for the center pixel
-t_len, h, w = frames.shape
-center_row = h // 2
-center_col = w // 2
-series = frames[:, center_row, center_col].astype(np.float64)
-save_data_manager.plot_pixel_over_time(series,
-                                title=f"Center Pixel ({center_row}, {center_col}) Intensity",
-                                y_label="Signal Intensity",
-                                output_filename="center_pixel_timeseries.png")
-
 
 # plot blood pool region
 save_data_manager.plot_mask(blood_pool_mask, output_filename="blood_pool.png")
@@ -36,17 +26,18 @@ save_data_manager.plot_mask(blood_pool_mask, output_filename="blood_pool.png")
 # plot myocardium region
 save_data_manager.plot_mask(myocardium_mask, output_filename="myocardium.png")
 
+
 # =============================================Compute Quantity===========================================
-compute_quantity = ComputeQuantity(frames=frames, aif_mask=blood_pool_mask, myo_mask=myocardium_mask)
+compute_quantity = ComputeQuantity(frames=frames, blood_pool_mask=blood_pool_mask, myo_mask=myocardium_mask)
 
-#compute AIF
-aif =compute_quantity.arterial_input_function()
+#compute blood pool pixel time series
+blood_pool_pixel_coordinates, blood_pool_time_series = compute_quantity.blood_pool_time_series()
 
-#plot AIF
-save_data_manager.plot_pixel_over_time(aif,
-                                       title=f"Arterial Input Function (AIF)",
+#plot blood pool time series at 10th pixel
+save_data_manager.plot_pixel_over_time(blood_pool_time_series[10],
+                                       title=f"Blood Pool time series at 10th pixel",
                                        y_label="Signal Intensity",
-                                       output_filename="arterial_input_function.png")
+                                       output_filename="blood_pool_time_series_10.png")
 
 #compute myocardium time series
 myo_pixel_coordinates, myo_time_series = compute_quantity.myocardium_time_series()
@@ -56,6 +47,15 @@ save_data_manager.plot_pixel_over_time(myo_time_series[10],
                                        title=f"MYOcardium time series (MYO) at 10th pixel",
                                        y_label="Signal Intensity",
                                        output_filename="myocardium_time_series_10.png")
+
+#compute AIF
+aif =compute_quantity.arterial_input_function()
+
+#plot AIF
+save_data_manager.plot_pixel_over_time(aif,
+                                       title=f"Arterial Input Function (AIF)",
+                                       y_label="Signal Intensity",
+                                       output_filename="arterial_input_function.png")
 
 # =============================================Compute MBF===========================================
 myocardial_blood_flow = MyocardialBloodFlow(aif=aif, myo=myo_time_series.T)

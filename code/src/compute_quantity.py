@@ -7,9 +7,9 @@ class ComputeQuantity:
     """
     A class for computing quantities from DICOM data and masks
     """
-    def __init__(self, frames: np.ndarray, aif_mask: np.ndarray, myo_mask: np.ndarray):
+    def __init__(self, frames: np.ndarray, blood_pool_mask: np.ndarray, myo_mask: np.ndarray):
         self.frames = frames
-        self.aif_mask = aif_mask
+        self.blood_pool_mask = blood_pool_mask
         self.myo_mask = myo_mask
 
 
@@ -70,7 +70,7 @@ class ComputeQuantity:
         logger.info("Computing AIF(t)")
 
         # Extract time series for each pixel within the blood pool region
-        pixel_coordinates, pixel_time_series = self._extract_pixel_time_series(self.aif_mask)
+        pixel_coordinates, pixel_time_series = self._extract_pixel_time_series(self.blood_pool_mask)
 
         num_time_stamps = pixel_time_series.shape[1]
         aif = np.zeros(num_time_stamps)
@@ -94,6 +94,20 @@ class ComputeQuantity:
         MYO_pixel_coordinates, MYO_time_series = self._extract_pixel_time_series(self.myo_mask)
         
         return MYO_pixel_coordinates, MYO_time_series
+    
+
+    def blood_pool_time_series(self)->tuple[list, np.ndarray]:
+        """
+        Extract time series data for each pixel within the blood pool region
+
+        Returns:
+            tuple[list, np.ndarray]: (pixel_coordinates, pixel_time_series)
+        """
+        logger.info("Extracting time series data for each pixel within the blood pool region")
+        
+        blood_pool_pixel_coordinates, blood_pool_time_series = self._extract_pixel_time_series(self.blood_pool_mask)
+        
+        return blood_pool_pixel_coordinates, blood_pool_time_series
     
         
         
