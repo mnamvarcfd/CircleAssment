@@ -126,22 +126,6 @@ class MyocardialBloodFlow:
         # 't' as the independent variable and the parameters to be optimized (F, tau_0, k).
         model_to_fit = lambda t_data, F, tau_0, k: self._convolution_model(t_data, F, tau_0, k, tau_d)
         
-        
-        # To prevent unrealistic parameters, we add bounds to the parameters.
-        # All the parameters are based on the paper simulations from Jerosch-Herold 1998, pages 5-6:
-        bounds = (
-                [
-                   0.5,   # F_min: Minimum flow from paper simulations (page 5: "flows from 0.5 to 4.0 ml/min/g")
-                   0.1,   # tau_0_min: Smallest reasonable width
-                   0.1,   # k_min: Smallest reasonable decay rate
-                ],
-                [
-                   4.0,   # F_max: Maximum flow from paper simulations (page 5)
-                   10.0,  # tau_0_max: Largest reasonable width  
-                   2.0    # k_max: Largest reasonable decay rate (paper used up to 5.0 in simulations but 2.0 is more physiological)
-                ]
-                )
-        
         try:
             # Fit the convolution_model to the measured MYO_pixel data
             # the documentation of curve_fit is based on the following link:
@@ -151,7 +135,7 @@ class MyocardialBloodFlow:
                 t,                # xdata (independent variable)
                 MYO_pixel,        # ydata (measured 1D pixel curve)
                 p0=[F_init, tau_0_init, k_init], # initial parameter guesses
-                bounds=bounds,
+                method='lm',  # 'lm' isLevenberg-Marquardt algorithm choosed baed on Jerosch-Herold 1998 paper
                 maxfev=10000
             )
 

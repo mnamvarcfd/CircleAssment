@@ -82,9 +82,9 @@ class SaveDataManager:
         # Add statistics text
         valid_values = pixel_values[pixel_values > 0]  # Exclude zeros from failed fits
         if len(valid_values) > 0:
-            stats_text = f'Mean: {np.mean(valid_values):.9f}\n'
-            stats_text += f'Max: {np.max(valid_values):.9f}\n'
-            stats_text += f'Min: {np.min(valid_values):.9f}\n'
+            stats_text = f'Mean: {np.mean(valid_values):.2f}\n'
+            stats_text += f'Max: {np.max(valid_values):.2f}\n'
+            stats_text += f'Min: {np.min(valid_values):.2f}\n'
             plt.text(0.02, 0.98, stats_text, transform=plt.gca().transAxes,
                     verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
 
