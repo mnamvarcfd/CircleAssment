@@ -107,14 +107,25 @@ class SaveDataManager:
                                  output_path: str = "dicom_movie.avi", 
                                  fps: int = 10, 
                                  normalize: bool = True,
-                                 apply_colormap: bool = False, 
+                                 apply_colormap: bool = True, 
                                  codec: str = "MJPG") -> Optional[str]:
         """
         Create a movie directly from a 3D frames array (t, h, w) and save under results/.
+        The movie is saved as a AVI file.
+        OpenCV is used to create the movie.
+        
+        Args:
+            frames (np.ndarray): 3D frames array (t, h, w)
+            output_path (str): Output path for the movie
+            fps (int): Frames per second
+            normalize (bool): Normalize the frames
+            apply_colormap (bool): Apply a colormap to the frames
+            codec (str): Codec for the movie
+        Returns:
+            Optional[str]: Output path if saved successfully, else None
         """
-        if frames is None or len(frames.shape) != 3:
-            logger.error("frames must be a 3D numpy array (t, h, w)")
-            return None
+        
+        
         t_len, height, width = frames.shape
         
         output_path = os.path.join(self.results_dir, f"dicom_movie.avi")
@@ -128,26 +139,26 @@ class SaveDataManager:
         if normalize:
             min_val = int(frames.min())
             max_val = int(frames.max())
+            
+        # Create the movie by traversing through the frames array in the time dimension.
         for t in range(t_len):
             arr = frames[t]
+            
             if normalize:
-                if max_val == min_val:
-                    norm = np.ones_like(arr, dtype=np.uint8) * 127
-                else:
-                    norm = ((arr - min_val) / (max_val - min_val) * 255).astype(np.uint8)
-            else:
-                img_min, img_max = int(arr.min()), int(arr.max())
-                if img_max == img_min:
-                    norm = np.ones_like(arr, dtype=np.uint8) * 127
-                else:
-                    norm = ((arr - img_min) / (img_max - img_min) * 255).astype(np.uint8)
+                norm = ((arr - min_val) / (max_val - min_val) * 255).astype(np.uint8)
+ 
+            # Available colormaps: https://docs.opencv.org/4.x/d3/d50/group__imgproc__colormap.html?utm_source=chatgpt.com
             if apply_colormap:
-                frame = cv2.applyColorMap(norm, cv2.COLORMAP_JET)
+                frame = cv2.applyColorMap(norm, cv2.COLORMAP_TURBO)
             else:
                 frame = cv2.cvtColor(norm, cv2.COLOR_GRAY2BGR)
+                
             video.write(frame)
+            
         video.release()
+        
         logger.info(f"Movie saved: {output_path}")
+        
         return output_path
 
 
