@@ -11,20 +11,36 @@ class MyocardialBloodFlow:
     """
     A class for computing the myocardial blood flow
     """
-    def __init__(self, aif: np.ndarray, myo: np.ndarray):
+    def __init__(self, aif: np.ndarray, myo: np.ndarray, myo_mask: np.ndarray):
         """
         Args:
             
             AIF (np.ndarray): A 1D NumPy array representing the Arterial Input
                             Function (c_in(t)). Its length must match the time
                             dimension of the MYO_pixel.
-            myo (np.ndarray): A 2D NumPy array representing the myocardial time series
+            myo (np.ndarray): A 3D NumPy array representing the myocardial time series at each pixel
+                              Its shape is (num_time_stamps, image_size, image_size).
         """
         self.aif = aif
         self.myo = myo
-
-        self.mbf = None  # This holds the MBF value for each pixel
+        self.myo_mask = myo_mask
         
+        self.num_time_stamps =  self.myo.shape[0]
+        
+        self.num_pixels_in_x_axis =  self.myo.shape[1]
+        self.num_pixels_in_y_axis =  self.myo.shape[2]
+
+        self.mbf= np.zeros((self.num_pixels_in_x_axis, self.num_pixels_in_y_axis))
+     
+        
+        logger.debug(f"AIF(t): {self.aif}")
+ 
+        for x in range(self.num_pixels_in_x_axis):
+            for y in range(self.num_pixels_in_y_axis):
+                if self.myo_mask[x, y] == 0:
+                    continue
+                myo_pixel_curve = self.myo[:, x, y]
+                logger.debug(f"myo_pixel_curve: {x}, {y}: {myo_pixel_curve}")
         
     def _fermi_function(self, 
                         t:np.ndarray, 
@@ -46,7 +62,7 @@ class MyocardialBloodFlow:
         Returns:
             R_F (numpy.ndarray): Impulse response function (Fermi function)
         """
-        tau_d = 0.01
+        tau_d = 1
         
         delayed_t = t - tau_d
         
@@ -61,9 +77,9 @@ class MyocardialBloodFlow:
 
     def _convolution_model(self,
                            t: np.ndarray,
-                            F: float,
-                            tau_0: float,
-                            k: float) -> np.ndarray:
+                           F: float,
+                           tau_0: float,
+                           k: float) -> np.ndarray:
         """
         This is the model to be fit, representing q(t) = c_in(t) * R_F(t) eq. 3 in Jerosch-Herold 1998
         It returns the convolution of the AIF with the Fermi function.
@@ -89,7 +105,11 @@ class MyocardialBloodFlow:
         return myo_model
 
 
-    def _MBF(self, MYO_pixel: np.ndarray) -> float:
+    def fermi_function_fitting(self, 
+                               MYO_time_series: np.ndarray, 
+                               F_init:float=1.0, 
+                               tau_0_init:float=20.0, 
+                               k_init:float=0.1) -> float:
         """
         Computes the Myocardial Blood Flow (MBF) for a single pixel's time curve.
 
@@ -99,28 +119,23 @@ class MyocardialBloodFlow:
         Section D of Jerosch-Herold 1998 paper.
 
         Args:
-            MYO_pixel (np.ndarray): A 1D NumPy array representing the signal
-                                    intensity over time for a single
-                                    myocardial pixel (q(t)).
-
+            MYO_time_series (np.ndarray): A 1D NumPy array representing the signal
+                intensity over time for a single myocardial pixel (q(t)).
+            F_init (float): Initial guess for flow rate (F), default is 1.0
+            tau_0_init (float): Initial guess for shoulder width (tau_0), default is 20.0
+            k_init (float): Initial guess for decay rate (k), default is 0.1
         Returns:
             float: The calculated Myocardial Blood Flow (MBF) for the pixel,
                 which corresponds to the fitted 'F' parameter for the Fermi function.
                 Returns 0.0 if the curve fitting fails to converge.
         """
         
-        # Initial guesses for parameters to be fitted
-        F_init = 1.0      # Initial guess for flow (F)
-        tau_0_init = 1.0  # Initial guess for shoulder width (tau_0)
-        k_init = 0.5      # Initial guess for decay rate (k)
-        
         # Create the time array (independent variable)
-        t = np.arange(len(self.aif))
+        t = np.arange(self.num_time_stamps)
 
         # Create a lambda function for the model to be passed to curve_fit.
-        # This "fixes" the 'tau_d' argument, leaving only
-        # 't' as the independent variable and the parameters to be optimized (F, tau_0, k).
-        model_to_fit = lambda t_data, F, tau_0, k: self._convolution_model(t_data, F, tau_0, k)
+        # 'time' is the independent variable and the parameters to be optimized (F, tau_0, k).
+        model_to_fit = lambda time, F, tau_0, k: self._convolution_model(time, F, tau_0, k)
         
         try:
             # Fit the convolution_model to the measured MYO_pixel data
@@ -129,16 +144,28 @@ class MyocardialBloodFlow:
             popt, pcov = curve_fit(
                 model_to_fit, 
                 t,                # xdata (independent variable)
-                MYO_pixel,        # ydata (measured 1D pixel curve)
+                MYO_time_series,        # ydata (measured 1D pixel curve)
                 p0=[F_init, tau_0_init, k_init], # initial parameter guesses
                 method='lm',  # 'lm' isLevenberg-Marquardt algorithm choosed baed on Jerosch-Herold 1998 paper
-                maxfev=10000
+                maxfev=1000
             )
             
             logger.debug(f"popt: {popt}")
             
+            #This is only for presentation =================================================
+            from save_data_manager import SaveDataManager
+            manager = SaveDataManager(results_dir='F:/18_Circle/code/tests/test_outputs')
+            series = self._fermi_function(t, popt[0], popt[1], popt[2])
+            
+            manager.plot_pixel_over_time(
+                series,
+                title="Fermi Function Fitting",
+                y_label="Value",
+                output_filename="fermi_function_fitting.png"
+            )
+            #==============================================================================
+        
             # popt contains the best-fit parameters [F, tau_0, k]
-            # The MBF is the fitted flow parameter F. 
             MBF = popt[0]
         
         except RuntimeError:
@@ -149,21 +176,18 @@ class MyocardialBloodFlow:
 
 
     def compute(self) -> np.ndarray:
-        
-        num_timepoints, num_pixels = self.myo.shape
-        
-        mbf_values = []
-        
-        for i in range(num_pixels):
-            myo_pixel_curve = self.myo[:, i]
-
-            # Calculate MBF for this single pixel
-            mbf_value = self._MBF(myo_pixel_curve)
             
-            mbf_values.append(mbf_value)
-        
-        # Convert the final list to a numpy array
-        self.mbf = np.array(mbf_values)
+        for x in range(self.num_pixels_in_x_axis):
+            for y in range(self.num_pixels_in_y_axis):
+                if self.myo_mask[x, y] == 0:
+                    continue
+                myo_pixel_curve = self.myo[:, x, y]
+
+                # Calculate MBF for this single pixel
+                mbf_value = self.fermi_function_fitting(myo_pixel_curve, F_init=3.0, tau_0_init=1.0, k_init=0.1)
+                
+                logger.debug(f"mbf_value: {x}, {y}: {mbf_value}") 
+                self.mbf[x, y] = mbf_value
         
         return self.mbf
 
@@ -193,7 +217,7 @@ if __name__ == "__main__":
     mbf_df.to_csv('results/mbf_results.csv', index=False)
     logger.info(f"MBF computed for {len(mbf)} pixels and saved to results/mbf_results.csv")
 
-    # Print some statistics
+    # some statistics
     logger.info(f"MBF min: {mbf.min():.3f}")
     logger.info(f"MBF max: {mbf.max():.3f}")
     logger.info(f"MBF mean: {mbf.mean():.3f}")

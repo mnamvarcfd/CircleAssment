@@ -100,11 +100,12 @@ class ComputeQuantity:
         # Extract time series for each pixel within the blood pool region
         pixel_coordinates, pixel_time_series = self._extract_pixel_time_series(self.blood_pool_mask)
 
-        num_time_stamps = pixel_time_series.shape[1]
+        num_time_stamps = pixel_time_series.shape[0]
+        num_blood_pool_pixels = pixel_time_series.shape[1]*pixel_time_series.shape[2]
         aif = np.zeros(num_time_stamps)
 
         # Compute average signal intensity of the blood pool pixels
-        aif = np.mean(pixel_time_series, axis=0)
+        aif = np.sum(pixel_time_series, axis=(1, 2)) / num_blood_pool_pixels
 
         logger.info(f"AIF computed with {num_time_stamps} time stamp")
         return aif

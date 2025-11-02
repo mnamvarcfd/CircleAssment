@@ -62,8 +62,8 @@ myocardial_blood_flow = MyocardialBloodFlow(aif=aif, myo=myo_time_series.T)
 
 mbf = myocardial_blood_flow.compute()
 
-save_data_manager.save_image(mbf, myocardium_mask, Value_title="MBF", output_filename="mbf_map.png")
+save_data_manager.save_image(mbf, myocardium_mask, Value_title="MBF", output_filename="mbf_map_taud_001.png")
 
-# Save MBF results to CSV
-mbf_df = pd.DataFrame(mbf, columns=['MBF'])
-mbf_df.to_csv('results/mbf_results.csv', index=False)
+# # Save MBF results to CSV
+# mbf_df = pd.DataFrame(mbf, columns=['MBF'])
+# mbf_df.to_csv('results/mbf_results.csv', index=False)

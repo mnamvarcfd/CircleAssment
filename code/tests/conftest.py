@@ -42,24 +42,21 @@ def gamma_variate(t, init_value=0.0, A=1.0, alpha=2.0, beta=1.0):
     return f
 
 
-def fermi(t:np.ndarray, 
-          F:float, 
-          tau_0:float, 
-          k:float, 
-          tau_d:float)->np.ndarray:
+def fermi(t:np.ndarray, F:float, tau_0:float, k:float)->np.ndarray:
     """
     Fermi function for impulse response
     The description of the args is based on eq 5 in Jerosch-Herold 1998 paper
+    tau_d (float): It interperited as the delay of the impulse response function.
     
     Args:
         t (numpy.ndarray): Time
         F (float): Rate of flow
         tau_0 (float): width of the shoulder of the Fermi function
         k (float): decay rate of Fermi function due to contrast agent washout.
-        tau_d (float): delay
     Returns:
         R_F (numpy.ndarray): Impulse response function (Fermi function)
     """
+    tau_d = 1
     
     delayed_t = t - tau_d
 
@@ -71,55 +68,6 @@ def fermi(t:np.ndarray,
     
     return R_F
 
-
-@pytest.fixture
-def sample_tissue_impulse_response(sample_myocardium_mask):
-    """Create sample data for tissue impulse response time series."""
-
-    tissue_impulse_response = np.zeros((num_frames, image_size, image_size), dtype=np.float64)
-    
-    y_coords, x_coords = np.where(sample_myocardium_mask == 1)
-    
-    time_series = fermi(t=np.arange(num_frames), F=1, tau_0=20, k=0.1, tau_d=1.5)
-
-    for y, x in zip(y_coords, x_coords):
-        tissue_impulse_response[:, y, x] = time_series
-        
-    return tissue_impulse_response
-
-
-@pytest.fixture
-def sample_blood_pool_data(sample_blood_pool_mask):
-    """Create sample data for blood pool time series."""
-    blood_pool_mask = sample_blood_pool_mask
-    
-    blood_pool_data = np.zeros((num_frames, image_size, image_size), dtype=np.float64)
-    
-    y_coords, x_coords = np.where(blood_pool_mask == 1)
-    
-    time_series = gamma_variate(np.arange(num_frames), init_value=10, A=150, alpha=3.5, beta=4.5)
-    
-    for y, x in zip(y_coords, x_coords):
-        blood_pool_data[:, y, x] = time_series
-        
-    return blood_pool_data
-
-
-@pytest.fixture
-def sample_myocardium_data(sample_myocardium_mask):
-    """Create sample data for myocardium time series."""
-    myocardium_mask = sample_myocardium_mask
-    
-    myocardium_data = np.zeros((num_frames, image_size, image_size), dtype=np.float64)
-    
-    y_coords, x_coords = np.where(myocardium_mask == 1)
-    
-    time_series = gamma_variate(np.arange(num_frames), init_value=50, A=50, alpha=3, beta=2)
-    
-    for y, x in zip(y_coords, x_coords):
-        myocardium_data[:, y, x] = time_series
-        
-    return myocardium_data
 
 
 @pytest.fixture
@@ -184,33 +132,55 @@ def sample_myocardium_mask():
 
 
 @pytest.fixture
-def sample_frames(sample_blood_pool_data, sample_myocardium_data):
-    """Create a sample 3D frames array for testing."""
-    frames = sample_blood_pool_data + sample_myocardium_data
+def sample_blood_pool_data(sample_blood_pool_mask):
+    """Create sample data for blood pool time series."""
+    blood_pool_mask = sample_blood_pool_mask
+    
+    blood_pool_data = np.zeros((num_frames, image_size, image_size), dtype=np.float64)
+    
+    y_coords, x_coords = np.where(blood_pool_mask == 1)
+    
+    time_series = gamma_variate(np.arange(num_frames), init_value=10, A=150, alpha=3.5, beta=4.5)
+    
+    for y, x in zip(y_coords, x_coords):
+        blood_pool_data[:, y, x] = time_series
         
-    return frames
+    return blood_pool_data
 
 
 @pytest.fixture
-def sample_aif():
+def sample_aif(sample_blood_pool_data):
     """Create a sample Arterial Input Function (AIF) time series."""
-    # Simulate a typical AIF curve (rapid rise, then decay)
-    t = np.arange(num_frames)
-    aif = gamma_variate(t, init_value=10, A=150, alpha=3.5, beta=4.5)
+
+    aif = np.mean(sample_blood_pool_data, axis=(1, 2))
+
     return aif.astype(np.float64)
 
 
 @pytest.fixture
+def sample_tissue_impulse_response(sample_myocardium_mask):
+    """Create sample data for tissue impulse response time series."""
+
+    tissue_impulse_response = np.zeros((num_frames, image_size, image_size), dtype=np.float64)
+    
+    y_coords, x_coords = np.where(sample_myocardium_mask == 1)
+    
+    time_series = fermi(t=np.arange(num_frames), F=1, tau_0=20, k=0.1)
+
+    for y, x in zip(y_coords, x_coords):
+        tissue_impulse_response[:, y, x] = time_series
+        
+    return tissue_impulse_response
+
+
+@pytest.fixture
 def sample_myocardium_data(sample_myocardium_mask, sample_aif, sample_tissue_impulse_response):
-    """Create a sample myocardium time series array (2D: num_timepoints, num_pixels) by convolving the tissue impulse response by the AIF."""
+    """Create a sample myocardium data by convolving the AIF with tissue impulse response."""
 
     # Get pixel coordinates where mask == 1
     y_coords, x_coords = np.where(sample_myocardium_mask == 1)
-    num_pixels = len(y_coords)
-    num_timepoints = len(sample_aif)
-    
-    # Create 2D array: (num_timepoints, num_pixels) - transposed format for MBF computation
-    myocardium_data_2d = np.zeros((num_timepoints, num_pixels), dtype=np.float64)
+        
+    myocardium_data = np.zeros((num_frames, image_size, image_size), dtype=np.float64)
     
     # For each pixel, convolve its time series with AIF
     for i, (y, x) in enumerate(zip(y_coords, x_coords)):
@@ -220,7 +190,16 @@ def sample_myocardium_data(sample_myocardium_mask, sample_aif, sample_tissue_imp
         # Convolve AIF with impulse response (as done in _convolution_model)
         # Use 'full' mode and take first len(sample_aif) elements to match time dimension
         convolved = convolve(sample_aif, pixel_impulse_response, mode='full')[:len(sample_aif)]
-        myocardium_data_2d[:, i] = convolved
+        myocardium_data[:, y, x] = convolved
     
-    return myocardium_data_2d
+    return myocardium_data
+
+
+@pytest.fixture
+def sample_frames(sample_blood_pool_data, sample_myocardium_data):
+    """Create a sample 3D frames array for testing."""
+    frames = sample_blood_pool_data + sample_myocardium_data
+        
+    return frames
+
 

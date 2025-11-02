@@ -64,6 +64,23 @@ class TestSaveDataManager:
         assert os.path.exists(output_path)
         
         
+    def test_plot_pixel_over_time_AIF(self, temp_dir, sample_aif):
+        """Test that plot_pixel_over_time creates a plot for AIF."""
+        manager = SaveDataManager(results_dir=temp_dir)
+        
+        output_path = manager.plot_pixel_over_time(
+            sample_aif,
+            title="Test AIF Time Series",
+            y_label="Signal Intensity",
+            output_filename="test_aif_time_series.png"
+        )
+        
+        assert output_path is not None
+        expected_path = os.path.join(temp_dir, "test_aif_time_series.png")
+        assert output_path == expected_path
+        assert os.path.exists(output_path)
+        
+      
     def test_plot_pixel_over_time_myocardium(self, temp_dir, sample_frames, sample_myocardium_mask):
         """Test that plot_pixel_over_time creates a plot for myocardium time series."""
         manager = SaveDataManager(results_dir=temp_dir)
@@ -94,15 +111,10 @@ class TestSaveDataManager:
         
         # Find a pixel that's actually in the myocardium mask (not all zeros)
         y_coords, x_coords = np.where(sample_myocardium_mask == 1)
-        if len(y_coords) > 0:
-            # Use the first pixel in the mask
-            y, x = y_coords[0], x_coords[0]
-            pixel_time_series = sample_tissue_impulse_response[:, y, x]
-    
-        else:
-            # Fallback if no pixels in mask
-            y, x = 25, 25  # Center pixel
-            pixel_time_series = sample_tissue_impulse_response[:, y, x]
+        
+        # Use the first pixel in the mask
+        y, x = y_coords[0], x_coords[0]
+        pixel_time_series = sample_tissue_impulse_response[:, y, x]
         
         output_path = manager.plot_pixel_over_time(
             pixel_time_series,
