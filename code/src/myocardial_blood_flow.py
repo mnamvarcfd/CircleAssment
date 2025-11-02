@@ -5,7 +5,7 @@ import pandas as pd
 from compute_quantity import ComputeQuantity
 from logging_config import setup_logger
 
-logger = setup_logger()
+logger = setup_logger(name='myocardial_blood_flow')
 
 class MyocardialBloodFlow:
     """
@@ -30,21 +30,23 @@ class MyocardialBloodFlow:
                         t:np.ndarray, 
                         F:float, 
                         tau_0:float, 
-                        k:float, 
-                        tau_d:float)->np.ndarray:
+                        k:float)->np.ndarray:
         """
         Fermi function for impulse response
         The description of the args is based on eq 5 in Jerosch-Herold 1998 paper
+        
+        Fixed parameter: tau_d (delay). According to Jerosch-Herold 1998 paper, tau_d should be 
+        defined by user! So, we hardcode it as 5.
         
         Args:
             t (numpy.ndarray): Time
             F (float): Rate of flow
             tau_0 (float): width of the shoulder of the Fermi function
             k (float): decay rate of Fermi function due to contrast agent washout.
-            tau_d (float): delay
         Returns:
             R_F (numpy.ndarray): Impulse response function (Fermi function)
         """
+        tau_d = 0.01
         
         delayed_t = t - tau_d
         
@@ -61,8 +63,7 @@ class MyocardialBloodFlow:
                            t: np.ndarray,
                             F: float,
                             tau_0: float,
-                            k: float,
-                            tau_d: float) -> np.ndarray:
+                            k: float) -> np.ndarray:
         """
         This is the model to be fit, representing q(t) = c_in(t) * R_F(t) eq. 3 in Jerosch-Herold 1998
         It returns the convolution of the AIF with the Fermi function.
@@ -73,14 +74,13 @@ class MyocardialBloodFlow:
             F (float): Rate of flow (parameter to fit)
             tau_0 (float): Shoulder width (parameter to fit)
             k (float): Decay rate (parameter to fit)
-            tau_d (float): Time delay (fixed value)
 
         Returns:
             np.ndarray: The modeled myocardial signal (myo_model) for a single pixel (1D array)
         """
 
         # 1. Generate the impulse response R_F(t)
-        R_F = self._fermi_function(t, F, tau_0, k, tau_d)
+        R_F = self._fermi_function(t, F, tau_0, k)
 
         # 2. Convolve with AIF (c_in(t))
         # 'full' mode and slicing ensures the output is the same length as t
@@ -114,17 +114,13 @@ class MyocardialBloodFlow:
         tau_0_init = 1.0  # Initial guess for shoulder width (tau_0)
         k_init = 0.5      # Initial guess for decay rate (k)
         
-        # Fixed parameter: tau_d (delay). According to Jerosch-Herold 1998 paper, tau_d should be 
-        # defined by user! So, we hardcode it as 0.01.
-        tau_d = 0.01 
-        
         # Create the time array (independent variable)
         t = np.arange(len(self.aif))
 
         # Create a lambda function for the model to be passed to curve_fit.
         # This "fixes" the 'tau_d' argument, leaving only
         # 't' as the independent variable and the parameters to be optimized (F, tau_0, k).
-        model_to_fit = lambda t_data, F, tau_0, k: self._convolution_model(t_data, F, tau_0, k, tau_d)
+        model_to_fit = lambda t_data, F, tau_0, k: self._convolution_model(t_data, F, tau_0, k)
         
         try:
             # Fit the convolution_model to the measured MYO_pixel data
@@ -138,7 +134,9 @@ class MyocardialBloodFlow:
                 method='lm',  # 'lm' isLevenberg-Marquardt algorithm choosed baed on Jerosch-Herold 1998 paper
                 maxfev=10000
             )
-
+            
+            logger.debug(f"popt: {popt}")
+            
             # popt contains the best-fit parameters [F, tau_0, k]
             # The MBF is the fitted flow parameter F. 
             MBF = popt[0]

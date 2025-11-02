@@ -53,35 +53,6 @@ class ComputeQuantity:
         return pixel_coordinates, pixel_time_series
 
 
-    def arterial_input_function(self)->np.ndarray:
-        """
-        Compute the Arterial Input Function (AIF) by averaging pixel values across all pixels at each time stamp
-
-        This method computes the AIF(t) by averaging the signal intensity across all pixels within
-        the blood pool for each time stamp. For each time stamp, it takes the mean of all pixel
-        values at that time, resulting in a single average intensity value per time frame.
-
-        Returns:
-            numpy.ndarray: 1D array of AIF values with shape (num_frames,)
-                - Each element represents the average signal intensity across all pixels
-                  within the blood pool at that specific time stamp
-                - Length equals the number of time stamps (num_time_stamps)
-        """
-        logger.info("Computing AIF(t)")
-
-        # Extract time series for each pixel within the blood pool region
-        pixel_coordinates, pixel_time_series = self._extract_pixel_time_series(self.blood_pool_mask)
-
-        num_time_stamps = pixel_time_series.shape[1]
-        aif = np.zeros(num_time_stamps)
-
-        # Compute average signal intensity of the blood pool pixels
-        aif = np.mean(pixel_time_series, axis=0)
-
-        logger.info(f"AIF computed with {num_time_stamps} time stamp")
-        return aif
-
-
     def myocardium_time_series(self)->tuple[list, np.ndarray]:
         """
         Extract time series data for each pixel within the myocardium region
@@ -109,7 +80,35 @@ class ComputeQuantity:
         
         return blood_pool_pixel_coordinates, blood_pool_time_series
     
-        
+     
+    def arterial_input_function(self)->np.ndarray:
+        """
+        Compute the Arterial Input Function (AIF) by averaging pixel values across all pixels at each time stamp
+
+        This method computes the AIF(t) by averaging the signal intensity across all pixels within
+        the blood pool for each time stamp. For each time stamp, it takes the mean of all pixel
+        values at that time, resulting in a single average intensity value per time frame.
+
+        Returns:
+            numpy.ndarray: 1D array of AIF values with shape (num_frames,)
+                - Each element represents the average signal intensity across all pixels
+                  within the blood pool at that specific time stamp
+                - Length equals the number of time stamps (num_time_stamps)
+        """
+        logger.info("Computing AIF(t)")
+
+        # Extract time series for each pixel within the blood pool region
+        pixel_coordinates, pixel_time_series = self._extract_pixel_time_series(self.blood_pool_mask)
+
+        num_time_stamps = pixel_time_series.shape[1]
+        aif = np.zeros(num_time_stamps)
+
+        # Compute average signal intensity of the blood pool pixels
+        aif = np.mean(pixel_time_series, axis=0)
+
+        logger.info(f"AIF computed with {num_time_stamps} time stamp")
+        return aif
+   
         
         
 if __name__ == "__main__":

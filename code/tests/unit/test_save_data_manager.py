@@ -39,7 +39,84 @@ class TestSaveDataManager:
         assert output_path == expected_path
         assert os.path.exists(output_path)
         
+       
+    def test_plot_pixel_over_time_blood_pool(self, temp_dir, sample_frames, sample_blood_pool_mask):
+        """Test that plot_pixel_over_time creates a plot."""
+        manager = SaveDataManager(results_dir=temp_dir)
         
+        
+        # Extract the data of th 1st pixel of blood pool data from the frames
+        y_coords, x_coords = np.where(sample_blood_pool_mask == 1)
+        y_coord = y_coords[0]
+        x_coord = x_coords[0]
+        sample_blood_pool_data = sample_frames[:, y_coord, x_coord]
+        
+        output_path = manager.plot_pixel_over_time(
+            sample_blood_pool_data,
+            title="Test Blood Pool Time Series",
+            y_label="Signal Intensity",
+            output_filename="test_blood_pool_time_series.png"
+        )
+        
+        assert output_path is not None
+        expected_path = os.path.join(temp_dir, "test_blood_pool_time_series.png")
+        assert output_path == expected_path
+        assert os.path.exists(output_path)
+        
+        
+    def test_plot_pixel_over_time_myocardium(self, temp_dir, sample_frames, sample_myocardium_mask):
+        """Test that plot_pixel_over_time creates a plot for myocardium time series."""
+        manager = SaveDataManager(results_dir=temp_dir)
+        
+        
+        # Extract the data of th 1st pixel of myocardium data from the frames
+        y_coords, x_coords = np.where(sample_myocardium_mask == 1)
+        y_coord = y_coords[0]
+        x_coord = x_coords[0]
+        sample_myocardium_data = sample_frames[:, y_coord, x_coord]
+        
+        output_path = manager.plot_pixel_over_time(
+            sample_myocardium_data,
+            title="Test Myocardium Time Series",
+            y_label="Signal Intensity",
+            output_filename="test_myocardium_time_series.png"
+        )
+        
+        assert output_path is not None
+        expected_path = os.path.join(temp_dir, "test_myocardium_time_series.png")
+        assert output_path == expected_path
+        assert os.path.exists(output_path)
+      
+        
+    def test_plot_pixel_over_time_tissue_impulse_response(self, temp_dir, sample_tissue_impulse_response, sample_myocardium_mask):
+        """Test that plot_pixel_over_time creates a plot for tissue impulse response time series."""
+        manager = SaveDataManager(results_dir=temp_dir)
+        
+        # Find a pixel that's actually in the myocardium mask (not all zeros)
+        y_coords, x_coords = np.where(sample_myocardium_mask == 1)
+        if len(y_coords) > 0:
+            # Use the first pixel in the mask
+            y, x = y_coords[0], x_coords[0]
+            pixel_time_series = sample_tissue_impulse_response[:, y, x]
+    
+        else:
+            # Fallback if no pixels in mask
+            y, x = 25, 25  # Center pixel
+            pixel_time_series = sample_tissue_impulse_response[:, y, x]
+        
+        output_path = manager.plot_pixel_over_time(
+            pixel_time_series,
+            title="Test Tissue Impulse Response Time Series",
+            y_label="Signal Intensity",
+            output_filename="test_tissue_impulse_response_time_series.png"
+        )
+        
+        assert output_path is not None
+        expected_path = os.path.join(temp_dir, "test_tissue_impulse_response_time_series.png")
+        assert output_path == expected_path
+        assert os.path.exists(output_path)
+          
+      
     def test_save_image_blood_pool(self, sample_blood_pool_mask, temp_dir):
         """Test that save_image saves an image map correctly."""
         manager = SaveDataManager(results_dir=temp_dir)

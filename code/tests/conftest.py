@@ -7,7 +7,9 @@ import numpy as np
 import pytest
 from unittest.mock import MagicMock, patch
 import tempfile
-import shutil
+import shutil    
+from scipy.signal import convolve
+    
 
 # Add parent directory to path to allow importing src modules
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -18,15 +20,72 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 
-num_frames = 10
+num_frames = 60
 image_size = 50
 
-def gamma_variate(t, A=1.0, t0=0.0, alpha=2.0, beta=1.0):
-    """Gamma-variate function: rise and decay curve"""
-    f = np.zeros_like(t)
-    mask = t > t0
-    f[mask] = A * ((t[mask] - t0) ** alpha) * np.exp(-(t[mask] - t0) / beta)
+def gamma_variate(t, init_value=0.0, A=1.0, alpha=2.0, beta=1.0):
+    """
+    Gamma-variate function with baseline shift (rise and decay curve).
+    
+    Args:
+        t: time points
+        init_value: value to shift the whole curve upward
+        A: amplitude of the peak (scales the curve)
+        alpha: controls rise steepness
+        beta: controls decay speed
+    """
+    f = A * (t ** alpha) * np.exp(-t / beta)
+    # Normalize peak to A
+    f = A * f / np.max(f)
+    # Shift the curve upward
+    f = f + init_value
     return f
+
+
+def fermi(t:np.ndarray, 
+          F:float, 
+          tau_0:float, 
+          k:float, 
+          tau_d:float)->np.ndarray:
+    """
+    Fermi function for impulse response
+    The description of the args is based on eq 5 in Jerosch-Herold 1998 paper
+    
+    Args:
+        t (numpy.ndarray): Time
+        F (float): Rate of flow
+        tau_0 (float): width of the shoulder of the Fermi function
+        k (float): decay rate of Fermi function due to contrast agent washout.
+        tau_d (float): delay
+    Returns:
+        R_F (numpy.ndarray): Impulse response function (Fermi function)
+    """
+    
+    delayed_t = t - tau_d
+
+    step_function = (delayed_t >= 0).astype(np.float64)
+  
+    exponent = np.exp(k * (delayed_t - tau_0)) + 1.0
+   
+    R_F = F / exponent * step_function
+    
+    return R_F
+
+
+@pytest.fixture
+def sample_tissue_impulse_response(sample_myocardium_mask):
+    """Create sample data for tissue impulse response time series."""
+
+    tissue_impulse_response = np.zeros((num_frames, image_size, image_size), dtype=np.float64)
+    
+    y_coords, x_coords = np.where(sample_myocardium_mask == 1)
+    
+    time_series = fermi(t=np.arange(num_frames), F=1, tau_0=20, k=0.1, tau_d=1.5)
+
+    for y, x in zip(y_coords, x_coords):
+        tissue_impulse_response[:, y, x] = time_series
+        
+    return tissue_impulse_response
 
 
 @pytest.fixture
@@ -38,7 +97,7 @@ def sample_blood_pool_data(sample_blood_pool_mask):
     
     y_coords, x_coords = np.where(blood_pool_mask == 1)
     
-    time_series = gamma_variate(np.arange(num_frames), A=1000, t0=0, alpha=2, beta=1)
+    time_series = gamma_variate(np.arange(num_frames), init_value=10, A=150, alpha=3.5, beta=4.5)
     
     for y, x in zip(y_coords, x_coords):
         blood_pool_data[:, y, x] = time_series
@@ -55,7 +114,7 @@ def sample_myocardium_data(sample_myocardium_mask):
     
     y_coords, x_coords = np.where(myocardium_mask == 1)
     
-    time_series = gamma_variate(np.arange(num_frames), A=1000, t0=0, alpha=2, beta=1)
+    time_series = gamma_variate(np.arange(num_frames), init_value=50, A=50, alpha=3, beta=2)
     
     for y, x in zip(y_coords, x_coords):
         myocardium_data[:, y, x] = time_series
@@ -130,3 +189,38 @@ def sample_frames(sample_blood_pool_data, sample_myocardium_data):
     frames = sample_blood_pool_data + sample_myocardium_data
         
     return frames
+
+
+@pytest.fixture
+def sample_aif():
+    """Create a sample Arterial Input Function (AIF) time series."""
+    # Simulate a typical AIF curve (rapid rise, then decay)
+    t = np.arange(num_frames)
+    aif = gamma_variate(t, init_value=10, A=150, alpha=3.5, beta=4.5)
+    return aif.astype(np.float64)
+
+
+@pytest.fixture
+def sample_myocardium_data(sample_myocardium_mask, sample_aif, sample_tissue_impulse_response):
+    """Create a sample myocardium time series array (2D: num_timepoints, num_pixels) by convolving the tissue impulse response by the AIF."""
+
+    # Get pixel coordinates where mask == 1
+    y_coords, x_coords = np.where(sample_myocardium_mask == 1)
+    num_pixels = len(y_coords)
+    num_timepoints = len(sample_aif)
+    
+    # Create 2D array: (num_timepoints, num_pixels) - transposed format for MBF computation
+    myocardium_data_2d = np.zeros((num_timepoints, num_pixels), dtype=np.float64)
+    
+    # For each pixel, convolve its time series with AIF
+    for i, (y, x) in enumerate(zip(y_coords, x_coords)):
+        # Extract the time series for this pixel: shape (num_frames,)
+        pixel_impulse_response = sample_tissue_impulse_response[:, y, x]
+        
+        # Convolve AIF with impulse response (as done in _convolution_model)
+        # Use 'full' mode and take first len(sample_aif) elements to match time dimension
+        convolved = convolve(sample_aif, pixel_impulse_response, mode='full')[:len(sample_aif)]
+        myocardium_data_2d[:, i] = convolved
+    
+    return myocardium_data_2d
+
