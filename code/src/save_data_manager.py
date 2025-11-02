@@ -204,9 +204,9 @@ class SaveDataManager:
         try:
             plt.figure(figsize=(10, 6))
             plt.plot(series, 'b-', linewidth=2)
-            plt.title(title)
-            plt.xlabel('Time Frame')
-            plt.ylabel(y_label)
+            plt.title(title, fontsize=16)
+            plt.xlabel('Time Frame', fontsize=14)
+            plt.ylabel(y_label, fontsize=14)
             plt.grid(True)
             plt.tight_layout()
             plt.savefig(output_path, dpi=300, bbox_inches='tight')

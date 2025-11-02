@@ -58,23 +58,30 @@ class TestMyocardialBloodFlow:
         assert np.array_equal(myocardial_blood_flow.aif, sample_aif)
         assert np.array_equal(myocardial_blood_flow.myo, sample_myocardium_data)
      
-     
-        # MBF values should be non-negative and reasonable
-        assert np.all(mbf_values >= 0), "All MBF values should be non-negative"
-        assert np.all(np.isfinite(mbf_values)), "All MBF values should be finite"
-        
         # Verify mbf attribute is set after compute
         assert myocardial_blood_flow.mbf is not None
 
         # # based on Quinaglia_2019: the MBF values is equal to the aplitude of impulse response function
-        # # So, the maximum valuse of sample_tissue_impulse_response should be equal to the MBF values
-        # Theoretical_MBF_values = np.max(sample_tissue_impulse_response)
-        # print(f"Theoretical_MBF_values: {Theoretical_MBF_values}")
-        
-        # np.testing.assert_allclose(mbf_values, Theoretical_MBF_values, atol=10e-6)
-        
-        
-        # Check that at least some pixels have non-zero MBF values (where myocardium mask is 1)
-        myocardium_pixels = mbf_values[sample_myocardium_mask == 1]
-        assert len(myocardium_pixels) > 0, "Should have myocardium pixels"
-        assert np.any(myocardium_pixels > 0), "At least some myocardium pixels should have positive MBF values"
+        # # So, the MBF values should be close to the A (Amplitude) of impulse response function used to 
+        # generate these values.
+        y_coords, x_coords = np.where(sample_myocardium_mask == 1)
+        myocardium_pixel = zip(y_coords, x_coords)
+        for y, x in myocardium_pixel:
+            np.testing.assert_allclose(mbf_values[y, x], 1.0, atol=10e-6)
+    
+        #This is only for presentation =================================================
+        from save_data_manager import SaveDataManager
+        manager = SaveDataManager(results_dir='F:/18_Circle/code/tests/test_outputs')
+        print(f"----test_directory: F:/18_Circle/code/tests/test_outputs")
+
+        # Extract MBF values only for myocardium pixels (where mask == 1)
+        myocardium_mbf_values = mbf_values[sample_myocardium_mask == 1]
+
+        manager.save_image(
+            myocardium_mbf_values,
+            sample_myocardium_mask,
+            Value_title="MBF",
+            output_filename="mbf_map_analytical.png"
+        )
+        #==============================================================================
+    
