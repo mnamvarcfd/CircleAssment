@@ -7,40 +7,29 @@ from logging_config import setup_logger
 
 logger = setup_logger(name='myocardial_blood_flow')
 
-class MyocardialBloodFlow:
+class MyocardialBloodFlow(ComputeQuantity):
     """
     A class for computing the myocardial blood flow
     """
-    def __init__(self, aif: np.ndarray, myo: np.ndarray, myo_mask: np.ndarray):
+    def __init__(self, aif: np.ndarray, frames: np.ndarray, blood_pool_mask: np.ndarray, myo_mask: np.ndarray):
         """
         Args:
-            
             AIF (np.ndarray): A 1D NumPy array representing the Arterial Input
-                            Function (c_in(t)). Its length must match the time
-                            dimension of the MYO_pixel.
-            myo (np.ndarray): A 3D NumPy array representing the myocardial time series at each pixel
-                              Its shape is (num_time_stamps, image_size, image_size).
+                Function (c_in(t)). Its length must match the time dimension of the MYO_pixel.
+            frames (np.ndarray): A 3D NumPy array representing the frames of the DICOM files.
+                Its shape is (num_time_stamps, image_size, image_size).
+            myo_mask (np.ndarray): A 2D NumPy array representing the myocardial mask.
+                Its shape is (image_size, image_size).
         """
-        self.aif = aif
-        self.myo = myo
-        self.myo_mask = myo_mask
-        
-        self.num_time_stamps =  self.myo.shape[0]
-        
-        self.num_pixels_in_x_axis =  self.myo.shape[1]
-        self.num_pixels_in_y_axis =  self.myo.shape[2]
+        super().__init__(frames=frames, blood_pool_mask=blood_pool_mask, myo_mask=myo_mask)
 
-        self.mbf= np.zeros((self.num_pixels_in_x_axis, self.num_pixels_in_y_axis))
+        self.frames = frames
+        self.num_time_stamps = frames.shape[0]
+        self.aif = self.arterial_input_function()
+        self.myo_pixel_coordinates, self.myo_pixel_time_series = self.myocardium_time_series()
+
+        self.mbf = np.zeros(self.myo_pixel_time_series.shape[0])
      
-        
-        logger.debug(f"AIF(t): {self.aif}")
- 
-        for x in range(self.num_pixels_in_x_axis):
-            for y in range(self.num_pixels_in_y_axis):
-                if self.myo_mask[x, y] == 0:
-                    continue
-                myo_pixel_curve = self.myo[:, x, y]
-                logger.debug(f"myo_pixel_curve: {x}, {y}: {myo_pixel_curve}")
         
     def _fermi_function(self, 
                         t:np.ndarray, 
@@ -152,18 +141,18 @@ class MyocardialBloodFlow:
             
             logger.debug(f"popt: {popt}")
             
-            #This is only for presentation =================================================
-            from save_data_manager import SaveDataManager
-            manager = SaveDataManager(results_dir='F:/18_Circle/code/tests/test_outputs')
-            series = self._fermi_function(t, popt[0], popt[1], popt[2])
+            # #This is only for presentation =================================================
+            # from save_data_manager import SaveDataManager
+            # manager = SaveDataManager(results_dir='F:/18_Circle/code/tests/test_outputs')
+            # series = self._fermi_function(t, popt[0], popt[1], popt[2])
             
-            manager.plot_pixel_over_time(
-                series,
-                title="Fermi Function Fitting",
-                y_label="Value",
-                output_filename="fermi_function_fitting.png"
-            )
-            #==============================================================================
+            # manager.plot_pixel_over_time(
+            #     series,
+            #     title="Fermi Function Fitting",
+            #     y_label="Value",
+            #     output_filename="fermi_function_fitting.png"
+            # )
+            # #==============================================================================
         
             # popt contains the best-fit parameters [F, tau_0, k]
             MBF = popt[0]
@@ -176,49 +165,45 @@ class MyocardialBloodFlow:
 
 
     def compute(self) -> np.ndarray:
-            
-        for x in range(self.num_pixels_in_x_axis):
-            for y in range(self.num_pixels_in_y_axis):
-                if self.myo_mask[x, y] == 0:
-                    continue
-                myo_pixel_curve = self.myo[:, x, y]
 
-                # Calculate MBF for this single pixel
-                mbf_value = self.fermi_function_fitting(myo_pixel_curve, F_init=3.0, tau_0_init=1.0, k_init=0.1)
-                
-                logger.debug(f"mbf_value: {x}, {y}: {mbf_value}") 
-                self.mbf[x, y] = mbf_value
-        
+        # Iterate over each myocardial pixel's time series
+        for i, myo_time_series in enumerate(self.myo_pixel_time_series):
+            # Calculate MBF for this single pixel
+            mbf_value = self.fermi_function_fitting(myo_time_series, F_init=1.0, tau_0_init=20.0, k_init=0.1)
+
+            logger.debug(f"mbf_value: {mbf_value}")
+            self.mbf[i] = mbf_value
+
         return self.mbf
 
 
     
-if __name__ == "__main__":
+# if __name__ == "__main__":
     
-    from data_loader import DataLoader
-    data_loader = DataLoader(dicom_dir="input_data/DICOM_files")
-    frames = data_loader.dicom()
-    aif_mask = data_loader.mask(mask_index=0)  # Blood pool
-    myo_mask = data_loader.mask(mask_index=1)  # Myocardium
+#     from data_loader import DataLoader
+#     data_loader = DataLoader(dicom_dir="input_data/DICOM_files")
+#     frames = data_loader.dicom()
+#     aif_mask = data_loader.mask(mask_index=0)  # Blood pool
+#     myo_mask = data_loader.mask(mask_index=1)  # Myocardium
     
-    compute_quantity = ComputeQuantity(frames=frames, aif_mask=aif_mask, myo_mask=myo_mask)
-    aif = compute_quantity.arterial_input_function()
-    myo_pixel_coordinates, myo_time_series = compute_quantity.myocardium_time_series()
+#     compute_quantity = ComputeQuantity(frames=frames, aif_mask=aif_mask, myo_mask=myo_mask)
+#     aif = compute_quantity.arterial_input_function()
+#     myo_pixel_coordinates, myo_time_series = compute_quantity.myocardium_time_series()
     
-    myocardial_blood_flow = MyocardialBloodFlow(aif=aif, myo=myo_time_series.T)
-    mbf = myocardial_blood_flow.compute()
+#     myocardial_blood_flow = MyocardialBloodFlow(aif=aif, myo=myo_time_series.T)
+#     mbf = myocardial_blood_flow.compute()
 
-    from save_data_manager import SaveDataManager
-    save_data_manager = SaveDataManager()
-    save_data_manager.save_image(mbf, myo_mask, Value_title="MBF", output_filename="mbf_map.png")
+#     from save_data_manager import SaveDataManager
+#     save_data_manager = SaveDataManager()
+#     save_data_manager.save_image(mbf, myo_mask, Value_title="MBF", output_filename="mbf_map.png")
     
-    # Save MBF results to CSV
-    mbf_df = pd.DataFrame(mbf, columns=['MBF'])
-    mbf_df.to_csv('results/mbf_results.csv', index=False)
-    logger.info(f"MBF computed for {len(mbf)} pixels and saved to results/mbf_results.csv")
+#     # Save MBF results to CSV
+#     mbf_df = pd.DataFrame(mbf, columns=['MBF'])
+#     mbf_df.to_csv('results/mbf_results.csv', index=False)
+#     logger.info(f"MBF computed for {len(mbf)} pixels and saved to results/mbf_results.csv")
 
-    # some statistics
-    logger.info(f"MBF min: {mbf.min():.3f}")
-    logger.info(f"MBF max: {mbf.max():.3f}")
-    logger.info(f"MBF mean: {mbf.mean():.3f}")
+#     # some statistics
+#     logger.info(f"MBF min: {mbf.min():.3f}")
+#     logger.info(f"MBF max: {mbf.max():.3f}")
+#     logger.info(f"MBF mean: {mbf.mean():.3f}")
     

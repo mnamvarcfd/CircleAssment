@@ -24,7 +24,24 @@ class TestComputeQuantity:
         assert np.array_equal(compute_quantity.myo_mask, sample_myocardium_mask)
     
     
-    def test_pixel_time_series(self, sample_frames, sample_mask, sample_blood_pool_mask, sample_myocardium_mask):
+    def test_extract_pixel_time_series_shape(self, sample_frames, sample_blood_pool_mask):
+        """Test _extract_pixel_time_series returns correct shape."""
+        compute_quantity = ComputeQuantity(
+            frames=sample_frames,
+            blood_pool_mask=sample_blood_pool_mask,
+            myo_mask=sample_blood_pool_mask
+        )
+        
+        pixel_coords, time_series = compute_quantity._extract_pixel_time_series(sample_blood_pool_mask)
+        
+        assert len(pixel_coords) > 0
+        assert isinstance(time_series, np.ndarray)
+        assert time_series.ndim == 2
+        assert time_series.shape[0] == len(pixel_coords)
+        assert time_series.shape[1] == sample_frames.shape[0]
+    
+    
+    def test_extract_pixel_time_series_coordinates_match_mask(self, sample_frames, sample_blood_pool_mask):
         """Test that pixel coordinates match mask pixels."""
         compute_quantity = ComputeQuantity(
             frames=sample_frames,
@@ -32,10 +49,10 @@ class TestComputeQuantity:
             myo_mask=sample_blood_pool_mask
         )
         
-        pixel_coords, time_series = compute_quantity._pixel_time_series(sample_mask)
+        pixel_coords, time_series = compute_quantity._extract_pixel_time_series(sample_blood_pool_mask)
         
         # Verify that all coordinates correspond to mask pixels
-        y_coords, x_coords = np.where(sample_mask == 1)
+        y_coords, x_coords = np.where(sample_blood_pool_mask == 1)
         expected_coords = set(zip(y_coords, x_coords))
         actual_coords = set(pixel_coords)
         assert expected_coords == actual_coords
@@ -79,7 +96,7 @@ class TestComputeQuantity:
         np.testing.assert_array_equal(time_series[0], sample_myocardium_data)
     
     
-    def test_arterial_input_function(self, sample_frames, sample_blood_pool_mask, sample_myocardium_mask, sample_aif):
+    def test_arterial_input_function(self, sample_frames, sample_blood_pool_mask, sample_myocardium_mask):
         """Test arterial_input_function computation."""
         compute_quantity = ComputeQuantity(
             frames=sample_frames,
@@ -89,6 +106,13 @@ class TestComputeQuantity:
         
         aif = compute_quantity.arterial_input_function()
         
+        
+        # Extract the data of th 1st pixel of blood pool data from the frames
+        y_coords, x_coords = np.where(sample_blood_pool_mask == 1)
+        y_coord = y_coords[0]
+        x_coord = x_coords[0]
+        sample_blood_pool_data = sample_frames[:, y_coord, x_coord]
+        
         #AIF should be equal to the values for one of pixel in blood pool over the time
-        np.testing.assert_array_equal(aif, sample_aif)
+        np.testing.assert_array_equal(aif, sample_blood_pool_data)
     

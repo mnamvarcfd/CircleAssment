@@ -13,7 +13,7 @@ class ComputeQuantity:
         self.myo_mask = myo_mask
 
 
-    def _extract_pixel_time_series(self, mask: np.ndarray)->tuple[list, np.ndarray]:
+    def _pixel_time_series(self, mask: np.ndarray)->tuple[list, np.ndarray]:
         """
         Extract time series data for each pixel within the mask
 
@@ -58,13 +58,13 @@ class ComputeQuantity:
         Extract time series data for each pixel within the myocardium region
 
         Returns:
-            tuple[list, np.ndarray]: _description_
+            tuple[list, np.ndarray]: (myo_pixel_coordinates, myo_time_series)
         """
         logger.info("Extracting time series data for each pixel within the myocardium region")
         
-        MYO_pixel_coordinates, MYO_time_series = self._extract_pixel_time_series(self.myo_mask)
+        myo_pixel_coordinates, myo_time_series = self._pixel_time_series(self.myo_mask)
         
-        return MYO_pixel_coordinates, MYO_time_series
+        return myo_pixel_coordinates, myo_time_series
     
 
     def blood_pool_time_series(self)->tuple[list, np.ndarray]:
@@ -76,7 +76,7 @@ class ComputeQuantity:
         """
         logger.info("Extracting time series data for each pixel within the blood pool region")
         
-        blood_pool_pixel_coordinates, blood_pool_time_series = self._extract_pixel_time_series(self.blood_pool_mask)
+        blood_pool_pixel_coordinates, blood_pool_time_series = self._pixel_time_series(self.blood_pool_mask)
         
         return blood_pool_pixel_coordinates, blood_pool_time_series
     
@@ -98,14 +98,14 @@ class ComputeQuantity:
         logger.info("Computing AIF(t)")
 
         # Extract time series for each pixel within the blood pool region
-        pixel_coordinates, pixel_time_series = self._extract_pixel_time_series(self.blood_pool_mask)
+        pixel_coordinates, pixel_time_series = self.blood_pool_time_series()
 
-        num_time_stamps = pixel_time_series.shape[0]
-        num_blood_pool_pixels = pixel_time_series.shape[1]*pixel_time_series.shape[2]
-        aif = np.zeros(num_time_stamps)
+        # pixel_time_series has shape (num_pixels, num_time_stamps)
+        num_pixels = pixel_time_series.shape[0]
+        num_time_stamps = pixel_time_series.shape[1]
 
-        # Compute average signal intensity of the blood pool pixels
-        aif = np.sum(pixel_time_series, axis=(1, 2)) / num_blood_pool_pixels
+        # Compute average signal intensity of the blood pool pixels across all pixels at each time point
+        aif = np.mean(pixel_time_series, axis=0)
 
         logger.info(f"AIF computed with {num_time_stamps} time stamp")
         return aif

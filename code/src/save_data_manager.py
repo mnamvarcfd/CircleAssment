@@ -133,7 +133,7 @@ class SaveDataManager:
         
         t_len, height, width = frames.shape
         
-        output_path = os.path.join(self.results_dir, f"dicom_movie.avi")
+        output_path = os.path.join(self.results_dir, output_path)
         fourcc = cv2.VideoWriter_fourcc(*'MJPG')
         video = cv2.VideoWriter(output_path, fourcc, fps, (width, height), isColor=True)
         if not video.isOpened():
@@ -142,15 +142,19 @@ class SaveDataManager:
             
         # Determine normalization range
         if normalize:
-            min_val = int(frames.min())
-            max_val = int(frames.max())
-            
+            min_val = frames.min()
+            max_val = frames.max()
+
         # Create the movie by traversing through the frames array in the time dimension.
         for t in range(t_len):
             arr = frames[t]
-            
+
             if normalize:
-                norm = ((arr - min_val) / (max_val - min_val) * 255).astype(np.uint8)
+                # Handle case where all pixels have the same value (avoid divide by zero)
+                if max_val == min_val:
+                    norm = np.full_like(arr, 127, dtype=np.uint8)  # Set to middle gray
+                else:
+                    norm = ((arr - min_val) / (max_val - min_val) * 255).astype(np.uint8)
  
             # Available colormaps: https://docs.opencv.org/4.x/d3/d50/group__imgproc__colormap.html?utm_source=chatgpt.com
             if apply_colormap:

@@ -69,7 +69,6 @@ def fermi(t:np.ndarray, F:float, tau_0:float, k:float)->np.ndarray:
     return R_F
 
 
-
 @pytest.fixture
 def temp_dir():
     """
@@ -88,7 +87,7 @@ def temp_dir():
 
 
 @pytest.fixture
-def sample_blood_pool_mask():
+def sample_mask():
     """Create a sample 2D binary mask for blood pool region.
     
     Returns a binary mask with a square region set to 1.
@@ -108,98 +107,226 @@ def sample_blood_pool_mask():
 
 
 @pytest.fixture
-def sample_myocardium_mask():
-    """Create a sample 2D binary mask for myocardium region.
+def sample_frames():
+    """Create a sample 3D frames array for testing."""
+    frames = np.zeros((num_frames, image_size, image_size), dtype=np.float64)
     
-    Returns a binary mask padded around the blood pool region.
-    """
+    for t in range(num_frames):
+        for x in range(image_size):
+            for y in range(image_size):
+                frames[t, y, x] = t+x+y
+    
+    return frames
+
+
+@pytest.fixture
+def sample_myocardium_mask():
+    """Create a sample 2D binary mask for myocardium region."""
     mask = np.zeros((image_size, image_size), dtype=np.uint8)
     
-    # Create a square region in the center
-    center_y, center_x = image_size // 2, image_size // 2
-    blood_pool_size = image_size // 4
-    myocardium_size = image_size // 4  
-    
-    y, x = np.ogrid[:image_size, :image_size]
-    
-    # Create larger square for myocardium
-    mask[(np.abs(x - center_x) <= myocardium_size/2+blood_pool_size/2) & (np.abs(y - center_y) <= myocardium_size/2+blood_pool_size/2)] = 1
-
-    # Remove blood pool region from myocardium mask
-    mask[(np.abs(x - center_x) <= blood_pool_size/2) & (np.abs(y - center_y) <= blood_pool_size/2)] = 0
+    mask[2:3, 2:3] = 1  # Set a small region in the center to 1
 
     return mask
 
 
 @pytest.fixture
-def sample_blood_pool_data(sample_blood_pool_mask):
-    """Create sample data for blood pool time series."""
-    blood_pool_mask = sample_blood_pool_mask
+def sample_blood_pool_mask():
+    """Create a sample 2D binary mask for blood pool region."""
+    mask = np.zeros((image_size, image_size), dtype=np.uint8)
     
-    blood_pool_data = np.zeros((num_frames, image_size, image_size), dtype=np.float64)
+    mask[1:2, 1:2] = 1  # Set a small region in the center to 1
     
-    y_coords, x_coords = np.where(blood_pool_mask == 1)
-    
-    time_series = gamma_variate(np.arange(num_frames), init_value=10, A=150, alpha=3.5, beta=4.5)
-    
-    for y, x in zip(y_coords, x_coords):
-        blood_pool_data[:, y, x] = time_series
-        
-    return blood_pool_data
+    return mask
 
 
 @pytest.fixture
-def sample_aif(sample_blood_pool_data):
-    """Create a sample Arterial Input Function (AIF) time series."""
-
-    aif = np.mean(sample_blood_pool_data, axis=(1, 2))
-
-    return aif.astype(np.float64)
-
-
-@pytest.fixture
-def sample_tissue_impulse_response(sample_myocardium_mask):
-    """Create sample data for tissue impulse response time series."""
-
-    tissue_impulse_response = np.zeros((num_frames, image_size, image_size), dtype=np.float64)
+def sample_aif(sample_frames, sample_blood_pool_mask):
+    """Create a sample AIF time series."""
+    aif = np.zeros((num_frames,), dtype=np.float64)
     
-    y_coords, x_coords = np.where(sample_myocardium_mask == 1)
+    for t in range(num_frames):
+        for x in range(image_size):
+            for y in range(image_size):
+                if sample_blood_pool_mask[y, x] == 1:
+                    aif[t] += sample_frames[t, y, x]
     
-    time_series = fermi(t=np.arange(num_frames), F=1, tau_0=20, k=0.1)
-
-    for y, x in zip(y_coords, x_coords):
-        tissue_impulse_response[:, y, x] = time_series
-        
-    return tissue_impulse_response
-
-
-@pytest.fixture
-def sample_myocardium_data(sample_myocardium_mask, sample_aif, sample_tissue_impulse_response):
-    """Create a sample myocardium data by convolving the AIF with tissue impulse response."""
-
-    # Get pixel coordinates where mask == 1
-    y_coords, x_coords = np.where(sample_myocardium_mask == 1)
-        
-    myocardium_data = np.zeros((num_frames, image_size, image_size), dtype=np.float64)
+    aif = aif / np.sum(sample_blood_pool_mask == 1)
     
-    # For each pixel, convolve its time series with AIF
-    for i, (y, x) in enumerate(zip(y_coords, x_coords)):
-        # Extract the time series for this pixel: shape (num_frames,)
-        pixel_impulse_response = sample_tissue_impulse_response[:, y, x]
-        
-        # Convolve AIF with impulse response (as done in _convolution_model)
-        # Use 'full' mode and take first len(sample_aif) elements to match time dimension
-        convolved = convolve(sample_aif, pixel_impulse_response, mode='full')[:len(sample_aif)]
-        myocardium_data[:, y, x] = convolved
+    return aif
+
+
+
+
+# @pytest.fixture
+# def sample_blood_pool_mask():
+#     """Create a sample 2D binary mask for blood pool region.
     
-    return myocardium_data
+#     Returns a binary mask with a square region set to 1.
+#     """
+#     mask = np.zeros((image_size, image_size), dtype=np.uint8)
+    
+#     # Create a square region in the center
+#     center_y, center_x = image_size // 2, image_size // 2
+#     blood_pool_size = image_size // 4  
+    
+#     y, x = np.ogrid[:image_size, :image_size]
+    
+#     # Create square region: both x and y must be within half_size from center
+#     mask[(np.abs(x - center_x) <= blood_pool_size/2) & (np.abs(y - center_y) <= blood_pool_size/2)] = 1
+
+#     return mask
 
 
-@pytest.fixture
-def sample_frames(sample_blood_pool_data, sample_myocardium_data):
-    """Create a sample 3D frames array for testing."""
-    frames = sample_blood_pool_data + sample_myocardium_data
+# @pytest.fixture
+# def sample_myocardium_mask():
+#     """Create a sample 2D binary mask for myocardium region.
+    
+#     Returns a binary mask padded around the blood pool region.
+#     """
+#     mask = np.zeros((image_size, image_size), dtype=np.uint8)
+    
+#     # Create a square region in the center
+#     center_y, center_x = image_size // 2, image_size // 2
+#     blood_pool_size = image_size // 4
+#     myocardium_size = image_size // 4  
+    
+#     y, x = np.ogrid[:image_size, :image_size]
+    
+#     # Create larger square for myocardium
+#     mask[(np.abs(x - center_x) <= myocardium_size/2+blood_pool_size/2) & (np.abs(y - center_y) <= myocardium_size/2+blood_pool_size/2)] = 1
+
+#     # Remove blood pool region from myocardium mask
+#     mask[(np.abs(x - center_x) <= blood_pool_size/2) & (np.abs(y - center_y) <= blood_pool_size/2)] = 0
+
+#     return mask
+
+
+# @pytest.fixture
+# def sample_blood_pool_time_series():
+#     """Create a sample time series for blood pool region."""
+#     time_series = gamma_variate(np.arange(num_frames), init_value=10, A=150, alpha=3.5, beta=4.5)
         
-    return frames
+#     return time_series
+
+
+# @pytest.fixture
+# def sample_tissue_impulse_response_time_series():
+#     """Create sample data for tissue impulse response time series."""
+#     time_series = fermi(t=np.arange(num_frames), F=1, tau_0=20, k=0.1)
+
+#     return time_series
+
+
+# @pytest.fixture
+# def sample_aif_time_series(sample_blood_pool_time_series):
+#     """Create a sample time series for AIF."""
+#     return sample_blood_pool_time_series
+
+
+# @pytest.fixture
+# def sample_myo_pixel_time_series(sample_aif_time_series, sample_tissue_impulse_response_time_series):
+#     """Create a sample time series for myocardium region."""
+    
+#         # Convolve AIF with impulse response (as done in _convolution_model)
+#         # Use 'full' mode and take first len(sample_aif) elements to match time dimension
+#         convolved = convolve(sample_aif, sample_tissue_impulse_response_time_series, mode='full')[:len(sample_aif)]
+        
+#     return convolved
+
+
+# @pytest.fixture
+# def sample_frames(sample_blood_pool_mask, sample_myo_mask, sample_blood_pool_time_series, sample_myo_pixel_time_series):
+#     """Create a sample 3D frames array for testing."""
+#     frames = np.zeros((num_frames, image_size, image_size), dtype=np.float64)
+    
+#     for t in range(num_frames):
+#         for x in range(image_size):
+#             for y in range(image_size):
+#                 if sample_blood_pool_mask[y, x] == 1:
+#                     frames[t, y, x] = sample_blood_pool_time_series[t]
+#                 elif sample_myo_mask[y, x] == 1:
+#                     frames[t, y, x] = sample_myo_pixel_time_series[t]
+#                 else:
+#                     frames[t, y, x] = 0
+        
+#     return frames
+
+
+
+
+
+
+
+
+# @pytest.fixture
+# def sample_blood_pool_data(sample_blood_pool_mask):
+#     """Create sample data for blood pool time series."""
+#     blood_pool_mask = sample_blood_pool_mask
+    
+#     blood_pool_data = np.zeros((num_frames, image_size, image_size), dtype=np.float64)
+    
+#     y_coords, x_coords = np.where(blood_pool_mask == 1)
+    
+#     time_series = gamma_variate(np.arange(num_frames), init_value=10, A=150, alpha=3.5, beta=4.5)
+    
+#     for y, x in zip(y_coords, x_coords):
+#         blood_pool_data[:, y, x] = time_series
+        
+#     return blood_pool_data
+
+
+# @pytest.fixture
+# def sample_aif(sample_blood_pool_data):
+#     """Create a sample Arterial Input Function (AIF) time series."""
+
+#     aif = np.mean(sample_blood_pool_data, axis=(1, 2))
+
+#     return aif.astype(np.float64)
+
+
+# @pytest.fixture
+# def sample_tissue_impulse_response(sample_myocardium_mask):
+#     """Create sample data for tissue impulse response time series."""
+
+#     tissue_impulse_response = np.zeros((num_frames, image_size, image_size), dtype=np.float64)
+    
+#     y_coords, x_coords = np.where(sample_myocardium_mask == 1)
+    
+#     time_series = fermi(t=np.arange(num_frames), F=1, tau_0=20, k=0.1)
+
+#     for y, x in zip(y_coords, x_coords):
+#         tissue_impulse_response[:, y, x] = time_series
+        
+#     return tissue_impulse_response
+
+
+# @pytest.fixture
+# def sample_myocardium_data(sample_myocardium_mask, sample_aif, sample_tissue_impulse_response):
+#     """Create a sample myocardium data by convolving the AIF with tissue impulse response."""
+
+#     # Get pixel coordinates where mask == 1
+#     y_coords, x_coords = np.where(sample_myocardium_mask == 1)
+        
+#     myocardium_data = np.zeros((num_frames, image_size, image_size), dtype=np.float64)
+    
+#     # For each pixel, convolve its time series with AIF
+#     for i, (y, x) in enumerate(zip(y_coords, x_coords)):
+#         # Extract the time series for this pixel: shape (num_frames,)
+#         pixel_impulse_response = sample_tissue_impulse_response[:, y, x]
+        
+#         # Convolve AIF with impulse response (as done in _convolution_model)
+#         # Use 'full' mode and take first len(sample_aif) elements to match time dimension
+#         convolved = convolve(sample_aif, pixel_impulse_response, mode='full')[:len(sample_aif)]
+#         myocardium_data[:, y, x] = convolved
+    
+#     return myocardium_data
+
+
+# @pytest.fixture
+# def sample_frames(sample_blood_pool_data, sample_myocardium_data):
+#     """Create a sample 3D frames array for testing."""
+#     frames = sample_blood_pool_data + sample_myocardium_data
+        
+#     return frames
 
 
