@@ -1,17 +1,15 @@
-name: CI_pipeline
+name: CI_pipeline 
 
 on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main]
-
+    branches: [ main ]
 
 permissions:
   contents: read
   actions: read
   checks: write
-
 
 jobs:
   test:
