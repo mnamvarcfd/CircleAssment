@@ -55,69 +55,75 @@ docker build -t myocardial-blood-flow .
 docker run myocardial-blood-flow
 ```
 
-## Development
+## Documentation
 
-### Code Quality
+This project uses [Sphinx](https://www.sphinx-doc.org/) to generate comprehensive documentation from docstrings and RST files.
 
-This project uses several tools for code quality:
+### Building Documentation Locally
 
-- **Black**: Code formatting
-- **isort**: Import sorting
-- **Flake8**: Linting
+To build and preview documentation locally:
 
-Run code quality checks:
 ```bash
-# Format code
-black src/ tests/
+# Install dependencies (includes Sphinx)
+pip install -r requirements.txt
 
-# Sort imports
-isort src/ tests/
+# Build HTML documentation
+python -m sphinx -b html docs docs/_build/html
 
-# Lint code
-flake8 src/ tests/
+# Open in browser:
+docs/_build/html/index.html
 ```
+
+### Updating Documentation
+
+To update documentation when making code changes:
+
+1. **Add/update docstrings** in your Python files following NumPy/Google style:
+   ```python
+   def my_function(param1: int, param2: str) -> dict:
+       """
+       Description of what this function does.
+
+       Args:
+           param1 (int): Description of param1
+           param2 (str): Description of param2
+
+       Returns:
+           dict: Description of return value
+       """
+       # Your implementation
+       pass
+   ```
+
+
+#### Adding New Modules
+When adding new Python modules:
+
+1. Create the module file in `src/`
+2. Add proper docstrings
+3. Create corresponding RST file in `docs/api/`
+4. Update `docs/index.rst` to include the new module
+
+### Documentation Structure
+
+```
+docs/
+├── conf.py              # Sphinx configuration
+├── index.rst            # Main documentation page
+├── modules.rst          # Module overview
+├── api/                 # API reference files
+│   ├── data_loader.rst
+│   ├── compute_quantity.rst
+│   └── ...
+└── _build/html/         # Generated HTML (auto-created)
+```
+
+## Development
 
 ## CI/CD
 
 This project uses GitHub Actions for continuous integration. The CI pipeline includes:
 
-### Automated Checks
-
-- **Multi-Python Version Testing**: Tests run on Python 3.9, 3.10, and 3.11
-- **Code Coverage**: Generates coverage reports and uploads to Codecov
-- **Linting**: Flake8 checks for code quality issues
-- **Code Formatting**: Ensures consistent formatting with Black
-- **Import Sorting**: Validates import organization with isort
-- **Docker Build**: Verifies Docker image builds successfully
-
-### CI Triggers
-
-The CI pipeline runs automatically on:
-- Push to `main` or `develop` branches
-- Pull requests to `main` or `develop` branches
-
-### Local CI Simulation
-
-To run the same checks locally:
-
-```bash
-# Install development dependencies
-pip install pytest pytest-cov flake8 black isort
-
-# Run tests with coverage
-pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
-
-# Run linting
-flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
-flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
-# Check formatting
-black --check --diff src/ tests/
-isort --check-only --diff src/ tests/
-
-# Build Docker image
-docker build -t myocardial-blood-flow .
-```
 
 ## Project Structure
 
@@ -144,15 +150,3 @@ docker build -t myocardial-blood-flow .
 └── README.md             # This file
 ```
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Ensure all tests pass and code quality checks pass
-6. Submit a pull request
-
-## License
-
-[Add your license information here]
