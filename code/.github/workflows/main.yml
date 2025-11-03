@@ -39,6 +39,7 @@ jobs:
           myocardial-blood-flow:test \
           bash -c "
             cd /app &&
+            pip install -r code/requirements.txt &&
             pip install pytest pytest-cov &&
             pytest tests/ --cov=src --cov-report=xml:test-results/coverage.xml --cov-report=term-missing
           "
