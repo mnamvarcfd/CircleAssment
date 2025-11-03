@@ -19,6 +19,7 @@ The package consists of several modules that work together to:
    :caption: Contents:
 
    modules
+   class_diagrams
 
 .. toctree::
    :maxdepth: 2
