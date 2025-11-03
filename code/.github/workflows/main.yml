@@ -45,12 +45,13 @@ jobs:
           "
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       with:
         file: ./test-results/coverage.xml
         flags: unittests
         name: codecov-umbrella
         token: ${{ secrets.CODECOV_TOKEN }}
+        slug: mnamvarcfd/CircleAssment
 
     - name: Upload test artifacts
       uses: actions/upload-artifact@v4
