@@ -25,7 +25,7 @@ jobs:
     - name: Build test Docker image
       uses: actions/docker/build-push-action@v5
       with:
-        context: .
+        context: ./code
         push: false
         tags: myocardial-blood-flow:test
         cache-from: type=gha
@@ -38,10 +38,10 @@ jobs:
           -v $(pwd):/app \
           myocardial-blood-flow:test \
           bash -c "
-            cd /app &&
+            cd /app/code &&
             pip install -r src/requirements.txt &&
             pip install pytest pytest-cov &&
-            pytest tests/ --cov=src --cov-report=xml:test-results/coverage.xml --cov-report=term-missing
+            pytest tests/ --cov=src --cov-report=xml:../test-results/coverage.xml --cov-report=term-missing
           "
 
     - name: Upload coverage to Codecov
@@ -71,7 +71,7 @@ jobs:
     - name: Build Docker image
       uses: actions/docker/build-push-action@v5
       with:
-        context: .
+        context: ./code
         push: false
         tags: myocardial-blood-flow:latest
         cache-from: type=gha
