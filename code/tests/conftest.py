@@ -3,15 +3,9 @@ Shared pytest fixtures for testing.
 """
 import os
 import sys
-import numpy as np
-import pytest
-from unittest.mock import MagicMock, patch
-import tempfile
-import shutil    
-from scipy.signal import convolve
-    
 
 # Add parent directory to path to allow importing src modules
+# This must happen before any other imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 src_path = os.path.join(project_root, 'src')
 if src_path not in sys.path:
@@ -19,55 +13,17 @@ if src_path not in sys.path:
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+import numpy as np
+import pytest
+from unittest.mock import MagicMock, patch
+import tempfile
+import shutil
+from scipy.signal import convolve
+from tests.test_utils import gamma_variate
+
 
 num_frames = 60
 image_size = 50
-
-def gamma_variate(t, init_value=0.0, A=1.0, alpha=2.0, beta=1.0):
-    """
-    Gamma-variate function with baseline shift (rise and decay curve).
-    
-    Args:
-        t: time points
-        init_value: value to shift the whole curve upward
-        A: amplitude of the peak (scales the curve)
-        alpha: controls rise steepness
-        beta: controls decay speed
-    """
-    f = A * (t ** alpha) * np.exp(-t / beta)
-    # Normalize peak to A
-    f = A * f / np.max(f)
-    # Shift the curve upward
-    f = f + init_value
-    return f
-
-
-def fermi(t:np.ndarray, F:float, tau_0:float, k:float)->np.ndarray:
-    """
-    Fermi function for impulse response
-    The description of the args is based on eq 5 in Jerosch-Herold 1998 paper
-    tau_d (float): It interperited as the delay of the impulse response function.
-    
-    Args:
-        t (numpy.ndarray): Time
-        F (float): Rate of flow
-        tau_0 (float): width of the shoulder of the Fermi function
-        k (float): decay rate of Fermi function due to contrast agent washout.
-    Returns:
-        R_F (numpy.ndarray): Impulse response function (Fermi function)
-    """
-    tau_d = 1
-    
-    delayed_t = t - tau_d
-
-    step_function = (delayed_t >= 0).astype(np.float64)
-  
-    exponent = np.exp(k * (delayed_t - tau_0)) + 1.0
-   
-    R_F = F / exponent * step_function
-    
-    return R_F
-
 
 @pytest.fixture
 def temp_dir():
@@ -154,6 +110,30 @@ def sample_aif(sample_frames, sample_blood_pool_mask):
     
     return aif
 
+
+
+
+
+@pytest.fixture
+def sample_blood_pool_gamma_variate():
+    """Create a sample time series for blood pool region."""
+    time_series = gamma_variate(np.arange(num_frames), init_value=10, A=150, alpha=3.5, beta=4.5)
+        
+    return time_series
+
+
+@pytest.fixture
+def sample_aif_gamma_variate(sample_blood_pool_gamma_variate):
+    """Create a sample time series for AIF."""
+    return sample_blood_pool_gamma_variate
+
+
+@pytest.fixture
+def sample_tissue_impulse_response_time_series_fermi():
+    """Create sample data for tissue impulse response time series."""
+    time_series = fermi(t=np.arange(num_frames), F=1, tau_0=20, k=0.1)
+
+    return time_series
 
 
 
