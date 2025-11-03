@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [ main]
 
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -26,19 +33,14 @@ jobs:
 
     - name: Run tests in Docker
       run: |
-        # Create directory for test results
         mkdir -p test-results
-
-        # Run tests inside Docker container and mount volume for results
         docker run --rm \
-          -v $(pwd)/test-results:/app/test-results \
-          -v $(pwd)/tests:/app/tests \
-          -v $(pwd)/src:/app/src \
+          -v $(pwd):/app \
           myocardial-blood-flow:test \
           bash -c "
+            cd /app &&
             pip install pytest pytest-cov &&
-            pytest tests/ --cov=src --cov-report=xml:/app/test-results/coverage.xml --cov-report=term-missing &&
-            cp coverage.xml /app/test-results/ 2>/dev/null || true
+            pytest tests/ --cov=src --cov-report=xml:test-results/coverage.xml --cov-report=term-missing
           "
 
     - name: Upload coverage to Codecov
@@ -47,6 +49,7 @@ jobs:
         file: ./test-results/coverage.xml
         flags: unittests
         name: codecov-umbrella
+        token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Upload test artifacts
       uses: actions/upload-artifact@v4
@@ -56,6 +59,7 @@ jobs:
         retention-days: 30
 
   docker:
+    needs: test
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
