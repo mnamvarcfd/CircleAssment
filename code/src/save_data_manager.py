@@ -19,6 +19,7 @@ class SaveDataManager:
       - Save PNGs from preloaded frames
       - Write metadata JSONs from preloaded pydicom datasets
       - Create a movie from preloaded frames
+
     All outputs are written to the results directory.
     """
 
@@ -261,32 +262,6 @@ class SaveDataManager:
         logger.info(f"Mask plot saved to: {output_file}")
         plt.close()
         return output_file
-
-
-if __name__ == "__main__":
-    from data_loader import DataLoader
-    data_loader = DataLoader()
-    frames = data_loader.dicom()
-    
-    manager = SaveDataManager()
-    manager.create_movie_from_frames(frames)
-    
-    # Example: plot intensity over time for the center pixel
-    t_len, h, w = frames.shape
-    center_row, center_col = h // 2, w // 2
-    series = frames[:, center_row, center_col].astype(np.float64)
-    
-    manager.plot_pixel_over_time(series,
-                                 title=f"Center Pixel ({center_row}, {center_col}) Intensity",
-                                 y_label="Signal Intensity",
-                                 output_filename="center_pixel_timeseries.png")
-    
-    
-    mask = DataLoader(mask_file="input_data/AIF_And_Myo_Masks.tiff").mask(mask_index=0)
-    manager.plot_mask(mask, output_filename="blood_pool.png")
-    
-    mask = DataLoader(mask_file="input_data/AIF_And_Myo_Masks.tiff").mask(mask_index=1)
-    manager.plot_mask(mask, output_filename="myocardium.png")
 
 
 

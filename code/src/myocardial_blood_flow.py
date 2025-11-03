@@ -173,33 +173,4 @@ class MyocardialBloodFlow(ComputeQuantity):
         return self.mbf
 
 
-    
-# if __name__ == "__main__":
-    
-#     from data_loader import DataLoader
-#     data_loader = DataLoader(dicom_dir="input_data/DICOM_files")
-#     frames = data_loader.dicom()
-#     aif_mask = data_loader.mask(mask_index=0)  # Blood pool
-#     myo_mask = data_loader.mask(mask_index=1)  # Myocardium
-    
-#     compute_quantity = ComputeQuantity(frames=frames, aif_mask=aif_mask, myo_mask=myo_mask)
-#     aif = compute_quantity.arterial_input_function()
-#     myo_pixel_coordinates, myo_time_series = compute_quantity.myocardium_time_series()
-    
-#     myocardial_blood_flow = MyocardialBloodFlow(aif=aif, myo=myo_time_series.T)
-#     mbf = myocardial_blood_flow.compute()
-
-#     from save_data_manager import SaveDataManager
-#     save_data_manager = SaveDataManager()
-#     save_data_manager.save_image(mbf, myo_mask, Value_title="MBF", output_filename="mbf_map.png")
-    
-#     # Save MBF results to CSV
-#     mbf_df = pd.DataFrame(mbf, columns=['MBF'])
-#     mbf_df.to_csv('results/mbf_results.csv', index=False)
-#     logger.info(f"MBF computed for {len(mbf)} pixels and saved to results/mbf_results.csv")
-
-#     # some statistics
-#     logger.info(f"MBF min: {mbf.min():.3f}")
-#     logger.info(f"MBF max: {mbf.max():.3f}")
-#     logger.info(f"MBF mean: {mbf.mean():.3f}")
-    
+  

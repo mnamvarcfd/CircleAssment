@@ -125,11 +125,3 @@ class DataLoader:
         logger.info(f"Mask loaded with shape {mask.shape}")
         return mask
 
-
-if __name__ == "__main__":
-
-    loader = DataLoader()
-    frames = loader.dicom()
-    mask = loader.mask()
-    logger.info(frames.shape)
-    logger.info(mask.shape)

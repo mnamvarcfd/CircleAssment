@@ -110,29 +110,4 @@ class ComputeQuantity:
         logger.info(f"AIF computed with {num_time_stamps} time stamp")
         return aif
    
-        
-        
-if __name__ == "__main__":
-
-    from data_loader import DataLoader
-    data_loader = DataLoader(dicom_dir="input_data/DICOM_files")
-    frames = data_loader.dicom()
-    aif_mask = data_loader.mask(mask_index=0)  # Blood pool
-    myo_mask = data_loader.mask(mask_index=1)  # Myocardium
-    compute_quantity = ComputeQuantity(frames=frames, aif_mask=aif_mask, myo_mask=myo_mask)
-    
-    aif =compute_quantity.arterial_input_function()
-
-    from save_data_manager import SaveDataManager
-    save_data_manager = SaveDataManager()
-    save_data_manager.plot_pixel_over_time(aif,
-                                 title=f"arterial_input_function",
-                                 y_label="Signal Intensity",
-                                 output_filename="arterial_input_function.png")
-    
-    myo_pixel_coordinates, myo_time_series = compute_quantity.myocardium_time_series()
-    save_data_manager.plot_pixel_over_time(myo_time_series[10],
-                                 title=f"myocardium_time_series_10",
-                                 y_label="Signal Intensity",
-                                 output_filename="myocardium_time_series_10.png")
-    
+       
