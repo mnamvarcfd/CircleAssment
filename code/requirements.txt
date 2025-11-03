@@ -7,3 +7,4 @@ tifffile>=2023.0.0
 imagecodecs>=2023.0.0
 pandas>=2.0.0
 scipy>=1.10.0
+pytest-html>=3.2.0

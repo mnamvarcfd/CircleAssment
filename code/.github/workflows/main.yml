@@ -27,11 +27,11 @@ jobs:
       with:
         context: ./code
         push: false
-        load: true
         tags: myocardial-blood-flow:test
         cache-from: type=gha
         cache-to: type=gha,mode=max
-
+        load: true 
+        
     - name: Run tests in Docker
       run: |
         mkdir -p test-results
@@ -58,27 +58,4 @@ jobs:
         name: test-results-docker
         path: test-results/
         retention-days: 30
-
-  docker:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Build Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./code
-        push: false
-        load: true
-        tags: myocardial-blood-flow:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    - name: Test Docker image
-      run: |
-        docker run --rm myocardial-blood-flow:latest python -c "import numpy, matplotlib, pydicom, cv2; print('Docker build successful - all dependencies imported')"
 
