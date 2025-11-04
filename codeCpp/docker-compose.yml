@@ -1,0 +1,63 @@
+# Docker Compose file for CodeCpp project
+# Note: version is obsolete in newer Docker Compose versions
+
+services:
+  codecpp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder  # Use builder stage for development
+    image: codecpp:latest
+    container_name: codecpp-app
+    volumes:
+      # Mount source code for development
+      - .:/app/source:ro
+      # Mount input data directory
+      - ./input_data:/app/input_data:ro
+      # Mount logs directory (writable)
+      - ./logs:/app/logs
+      # Mount output directory (writable)
+      - ./output:/app/output
+    working_dir: /app
+    environment:
+      - CMAKE_BUILD_TYPE=Release
+    # Command to run the application (override in docker-compose run)
+    command: /usr/local/bin/CodeCpp
+    # Uncomment to keep container running
+    # command: tail -f /dev/null
+
+  # Development service with build tools
+  codecpp-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    image: codecpp-dev:latest
+    container_name: codecpp-dev
+    volumes:
+      - .:/app:rw  # Mount source code as writable for development
+      - ./input_data:/app/input_data:ro
+      - ./logs:/app/logs
+      - ./output:/app/output
+    working_dir: /app
+    environment:
+      - CMAKE_BUILD_TYPE=Release
+    # Keep container running for interactive development
+    command: tail -f /dev/null
+    stdin_open: true
+    tty: true
+
+  # Build-only service
+  codecpp-build:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    image: codecpp-build:latest
+    container_name: codecpp-build
+    volumes:
+      - .:/app:ro
+      - ./build:/app/build
+    working_dir: /app/build
+    command: cmake --build . --config Release
+
