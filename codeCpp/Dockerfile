@@ -1,66 +1,82 @@
-# Multi-stage Dockerfile for C++ DICOM project
+# ===========================
+# Stage 1: Build dependencies and compile the project
+# ===========================
 FROM ubuntu:22.04 AS builder
 
-# Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install build essentials and dependencies
-RUN apt-get update && apt-get install -y \
+# Install build tools and system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
     git \
     wget \
     pkg-config \
-    libdcmtk-dev \
-    libdcmtk16 \
     zlib1g-dev \
     libtiff-dev \
     libpng-dev \
     libxml2-dev \
     libssl-dev \
     libopencv-dev \
+    libeigen3-dev \
+    libsuitesparse-dev \
+    libdcmtk-dev \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
+# ===========================
+# Download and install ALGLIB
+# ===========================
+WORKDIR /opt
+
+RUN wget -q https://www.alglib.net/translator/re/alglib-3.20.0.cpp.gpl.tgz && \
+    tar -xzf alglib-3.20.0.cpp.gpl.tgz && \
+    cd alglib-cpp && \
+    mkdir -p /usr/local/include/alglib && \
+    cp src/*.h /usr/local/include/alglib/ && \
+    cp src/*.cpp /usr/local/include/alglib/ && \
+    rm -rf /opt/alglib-*
+
+# ===========================
+# Build your C++ project
+# ===========================
 WORKDIR /app
 
-# Copy source code
 COPY . .
 
-# Create build directory
-RUN mkdir -p build
-
-# Build the project
-WORKDIR /app/build
-RUN cmake .. && \
+RUN mkdir build && cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
     cmake --build . -j$(nproc)
 
-# Runtime stage
+# ===========================
+# Stage 2: Runtime (lightweight)
+# ===========================
 FROM ubuntu:22.04 AS runtime
 
-# Install runtime dependencies
-# Note: Installing libopencv-dev for runtime to ensure all OpenCV libraries are available
-# In production, you could install only the specific runtime packages, but this is simpler
-RUN apt-get update && apt-get install -y \
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libdcmtk16 \
     zlib1g \
     libtiff5 \
     libpng16-16 \
     libxml2 \
     libssl3 \
-    libopencv-dev \
+    libopencv-core4.5 \
+    libopencv-imgproc4.5 \
+    libopencv-imgcodecs4.5 \
+    libeigen3-dev \
+    libsuitesparse-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy built executable from builder stage
-# Note: executable is in build/ directory (not build/bin/ due to CMAKE_RUNTIME_OUTPUT_DIRECTORY setting)
+# Copy ALGLIB headers and compiled project binary
+COPY --from=builder /usr/local/include/alglib /usr/local/include/alglib
 COPY --from=builder /app/build/CodeCpp /usr/local/bin/CodeCpp
 
-# Set working directory
+# Working directory and I/O folders
 WORKDIR /app
-
-# Create directories for input/output
 RUN mkdir -p /app/input_data /app/logs /app/output
 
 # Default command
 CMD ["/usr/local/bin/CodeCpp"]
-

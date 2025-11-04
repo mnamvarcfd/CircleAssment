@@ -39,6 +39,7 @@ services:
       - ./input_data:/app/input_data:ro
       - ./logs:/app/logs
       - ./output:/app/output
+      - ./test_results:/app/test_results  # Mount test results directory
     working_dir: /app
     environment:
       - CMAKE_BUILD_TYPE=Release

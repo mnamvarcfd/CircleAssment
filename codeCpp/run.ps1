@@ -12,5 +12,5 @@ Write-Host ""
 
 # Run in Docker container - build and run
 $dicomPath = $dicomDir -replace '\\', '/'
-docker-compose run --rm codecpp-dev bash -c "cd /app/build && if [ ! -f CodeCpp ]; then echo 'Building project (this may take a few minutes)...' && cd .. && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && cmake --build . -j4; else echo 'Using existing build...'; fi && cd /app/build && echo '' && echo '=== Running Application ===' && ./CodeCpp /app/$dicomPath"
+docker-compose run --rm codecpp-dev bash -c "echo 'Building project (this may take a few minutes)...' && cd /app && rm -rf build && mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && cmake --build . -j4 && echo '' && echo '=== Running Application ===' && ./CodeCpp /app/$dicomPath"
 

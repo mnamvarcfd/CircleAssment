@@ -43,6 +43,20 @@ def temp_dir():
 
 
 @pytest.fixture
+def unit_test_results_dir():
+    """
+    Create a directory for unit test results.
+    
+    Files are written to tests/results/unit_tests/ directory.
+    This directory is used to save outputs from unit tests.
+    """
+    results_dir = os.path.join(project_root, 'tests', 'results', 'unit_tests')
+    os.makedirs(results_dir, exist_ok=True)
+    
+    yield results_dir
+
+
+@pytest.fixture
 def sample_mask():
     """Create a sample 2D binary mask for blood pool region.
     

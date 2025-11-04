@@ -1,11 +1,14 @@
 """
 Unit tests for myocardial_blood_flow.py
 """
+import os
 import numpy as np
 import pytest
+import pandas as pd
 from unittest.mock import patch
 from scipy.signal import convolve
 from myocardial_blood_flow import MyocardialBloodFlow
+from save_data_manager import SaveDataManager
 from tests.test_utils import gamma_variate
     
     
@@ -56,7 +59,8 @@ class TestMyocardialBloodFlow:
     def test_fermi_curve_fitting_given_parameters(self, 
                                                   sample_frames, 
                                                   sample_blood_pool_mask, 
-                                                  sample_myocardium_mask):
+                                                  sample_myocardium_mask,
+                                                  unit_test_results_dir):
         """
         Test fermi_curve_fitting method with given parameters.
 
@@ -68,6 +72,9 @@ class TestMyocardialBloodFlow:
         Hence, the MBF value (returned by fermi_curve_fitting method) should be as the
         one used to generate the myocardium curve (1.0 in this case).
         """
+        # Create SaveDataManager for saving results
+        save_manager = SaveDataManager(results_dir=unit_test_results_dir)
+        
         # Create MyocardialBloodFlow instance
         myocardial_blood_flow = MyocardialBloodFlow(
             frames=sample_frames,

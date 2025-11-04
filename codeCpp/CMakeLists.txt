@@ -5,8 +5,6 @@ project(CodeCpp VERSION 1.0.0 LANGUAGES CXX)
 # Use C++17
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# Export compile_commands.json for IDEs
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # -------------------------------
@@ -22,41 +20,30 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(spdlog)
 
-# DCMTK - Use vcpkg or system installation
-# To install DCMTK via vcpkg: vcpkg install dcmtk
-# Or download pre-built binaries from: https://dcmtk.org/download/
-find_package(DCMTK QUIET)
+# Google Test (only for unit tests)
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.14.0
+)
+set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
+set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
 
-if(NOT DCMTK_FOUND)
-    message(FATAL_ERROR 
-        "DCMTK not found!\n"
-        "Please install DCMTK using one of these methods:\n"
-        "  1. vcpkg: vcpkg install dcmtk\n"
-        "  2. Download from: https://dcmtk.org/download/\n"
-        "  3. Set DCMTK_DIR to point to your DCMTK installation"
-    )
-endif()
-
-message(STATUS "DCMTK found: ${DCMTK_DIR}")
-message(STATUS "DCMTK include dirs: ${DCMTK_INCLUDE_DIRS}")
-message(STATUS "DCMTK libraries: ${DCMTK_LIBRARIES}")
-
-# OpenCV
+# System dependencies
+find_package(DCMTK REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(Eigen3 REQUIRED)
 
-if(NOT OpenCV_FOUND)
-    message(FATAL_ERROR 
-        "OpenCV not found!\n"
-        "Please install OpenCV using one of these methods:\n"
-        "  1. Ubuntu/Debian: sudo apt-get install libopencv-dev\n"
-        "  2. vcpkg: vcpkg install opencv\n"
-        "  3. Build from source: https://opencv.org/releases/"
-    )
+# ALGLIB - header-only library
+set(ALGLIB_INCLUDE_DIR "/usr/local/include/alglib")
+if(NOT EXISTS ${ALGLIB_INCLUDE_DIR})
+    message(FATAL_ERROR "ALGLIB headers not found at ${ALGLIB_INCLUDE_DIR}")
 endif()
 
-message(STATUS "OpenCV found: ${OpenCV_VERSION}")
-message(STATUS "OpenCV include dirs: ${OpenCV_INCLUDE_DIRS}")
-message(STATUS "OpenCV libraries: ${OpenCV_LIBS}")
+# Create ALGLIB library from source files
+file(GLOB ALGLIB_SOURCES "${ALGLIB_INCLUDE_DIR}/*.cpp")
+add_library(alglib STATIC ${ALGLIB_SOURCES})
 
 # -------------------------------
 # Project source
@@ -66,32 +53,31 @@ add_executable(${PROJECT_NAME}
     src/logger.cpp
     src/DicomLoader.cpp
     src/TiffMaskLoader.cpp
+    src/ComputeQuantity.cpp
+    src/SaveDataManager.cpp
+    src/MyocardialBloodFlow.cpp
 )
 
 # Include directories
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inculde)
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/inculde
+    ${ALGLIB_INCLUDE_DIR}
+)
 
-# Link spdlog
-target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
+# Link dependencies
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    spdlog::spdlog
+    ${DCMTK_LIBRARIES}
+    ${OpenCV_LIBS}
+    alglib
+)
 
-# Link DCMTK
-target_link_libraries(${PROJECT_NAME} PRIVATE ${DCMTK_LIBRARIES})
-target_include_directories(${PROJECT_NAME} PRIVATE ${DCMTK_INCLUDE_DIRS})
-
-# Link OpenCV (use modern CMake targets if available, otherwise fallback)
-if(TARGET opencv_core)
-    target_link_libraries(${PROJECT_NAME} PRIVATE opencv_core opencv_imgproc opencv_imgcodecs opencv_highgui)
-else()
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenCV_LIBS})
-    target_include_directories(${PROJECT_NAME} PRIVATE ${OpenCV_INCLUDE_DIRS})
-endif()
-
-# Filesystem (modern compilers)
-if(NOT MSVC)
+# Filesystem library for old GCC (<9)
+if(NOT MSVC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
     target_link_libraries(${PROJECT_NAME} PRIVATE stdc++fs)
 endif()
 
-# Optional: Output directory
+# Output directory
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Compiler warnings
@@ -101,10 +87,31 @@ else()
     add_compile_options(-Wall -Wextra -pedantic)
 endif()
 
-# Custom targets
-add_custom_target(run
-    COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME}
-    DEPENDS ${PROJECT_NAME}
-    WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-    COMMENT "Running ${PROJECT_NAME}"
+# -------------------------------
+# Unit Tests
+# -------------------------------
+enable_testing()
+
+add_executable(SaveDataManagerTest
+    tests/SaveDataManagerTest.cpp
+    src/SaveDataManager.cpp
+    src/logger.cpp
 )
+
+# Include directories for test
+target_include_directories(SaveDataManagerTest PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/inculde
+)
+
+target_link_libraries(SaveDataManagerTest PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+    spdlog::spdlog
+    ${OpenCV_LIBS}
+)
+
+if(NOT MSVC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+    target_link_libraries(SaveDataManagerTest PRIVATE stdc++fs)
+endif()
+
+add_test(NAME SaveDataManagerTest COMMAND SaveDataManagerTest)
