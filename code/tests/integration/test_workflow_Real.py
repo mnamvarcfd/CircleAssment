@@ -7,7 +7,7 @@ import os
 import pandas as pd
 from data_loader import DataLoader
 from compute_quantity import ComputeQuantity
-from myocardial_blood_flow import MyocardialBloodFlow
+from myocardial_blood_flow_fixed_tau_d import MyocardialBloodFlow
 from save_data_manager import SaveDataManager
 
 
@@ -112,11 +112,11 @@ def test_workflow_real():
 
     mbf = myocardial_blood_flow.compute()
 
-    save_data_manager.save_image(mbf, myocardium_mask, Value_title="MBF", output_filename="mbf_map_taud_001.png")
+    save_data_manager.save_image(mbf, myocardium_mask, Value_title="MBF", output_filename="non_scaled_mbf_map.png")
 
     time = data_loader.time
     dimensional_mbf = dimensionalize_mbf(mbf, time)
-    save_data_manager.save_image(dimensional_mbf, myocardium_mask, Value_title="Dimensional MBF", output_filename="dimensional_mbf_map_taud_001.png")
+    save_data_manager.save_image(dimensional_mbf, myocardium_mask, Value_title="Scaled MBF", output_filename="Scaled_MBF_map.png")
 
 
 

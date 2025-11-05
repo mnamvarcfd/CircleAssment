@@ -7,7 +7,7 @@ import pytest
 import pandas as pd
 from unittest.mock import patch
 from scipy.signal import convolve
-from myocardial_blood_flow import MyocardialBloodFlow
+from myocardial_blood_flow_fixed_tau_d import MyocardialBloodFlow
 from save_data_manager import SaveDataManager
 from tests.test_utils import gamma_variate
     

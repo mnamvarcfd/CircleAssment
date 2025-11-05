@@ -4,7 +4,7 @@ Shared utility functions for tests.
 
 import numpy as np
 from scipy.signal import convolve
-from myocardial_blood_flow import MyocardialBloodFlow
+from myocardial_blood_flow_fixed_tau_d import MyocardialBloodFlow
 
 
 def gamma_variate(t, init_value=0.0, A=1.0, alpha=2.0, beta=1.0):
